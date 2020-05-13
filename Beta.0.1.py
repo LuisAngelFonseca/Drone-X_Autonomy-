@@ -257,31 +257,33 @@ while True:
     print(f"dir = {dir} mov = {mov} counter = {counter}")
 
     # Drone Takeoff
-    if counter == 60:
+    if counter == 40:
         tello.takeoff()
         send_rc_control = True
 
     left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity = drone_stay_close(dir, mov, 30, 20)
     # Send the velocities to drone
-    if tello.send_rc_control:
+    time.sleep(1/30)
+    if send_rc_control:
         tello.send_rc_control(left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity)
 
     counter = counter+1
 
+
     # Display the image
     cv2.imshow('Drone X', video_user)
-
-    # comming soon (emergency bottom)
-    if cv2.waitKey(20) & 0xFF == 'e':
-        tello.emergency()
+    time.sleep(1 / 30)
 
     # coming soon (quit video)
-    if cv2.waitKey(20) & 0xFF == 27:
+    if cv2.waitKey(5) & 0xFF == ord('q'):
+        send_rc_control = False
+        time.sleep(3.0)
+        frame_read.stop()
+        tello.stop_video_capture()
+        cv2.destroyAllWindows()
         break
 
 
 # Release
 # And then to destroy
-tello.stop_video_capture()
-video_user.release()
-cv2.destroyAllWindows()
+tello.land()
