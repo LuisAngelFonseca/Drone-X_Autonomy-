@@ -6,10 +6,9 @@ import time
 import argparse
 import imutils
 
-global dirr
 
 def display_grid(frame):
-    """Display grid with 9 sectors on the video"""
+    """Display grid on the video"""
     # Change the the frame of BGR to Gray
     # Display each line of the greed
     cv2.line(frame, pt1=(320, 0), pt2=(320, 720), color=(255, 0, 0), thickness=2)
@@ -62,9 +61,10 @@ def procesing(frame):
     blurred = cv2.GaussianBlur(frame, (11,11), 0)
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-    # Lemmons
+    # Lemmons color range
     greenLower = (29, 86, 6)
     greenUpper = (64, 255, 255)
+
     pts = deque(maxlen=args["buffer"])
 
     # construct a mask for the color "green", then perform
@@ -122,6 +122,7 @@ def procesing(frame):
 
 
 def track_drone_track(x, y):
+    dirr = 0
     if x < 640 and x > 320:
         if y < 480 and y > 240:
             dirr = 0
@@ -164,37 +165,50 @@ def susana_distancia(r):
 
 
 
-
+# Create an instance of Drone Tello
 tello = Tello()
+#Connect to Drone
 tello.connect()
+# Send message to drone to start stream
 tello.streamon()
-# Size of the image (960, 720)
+
+# Create some variables
 counter = 0
 dir = 0
-time.sleep(2.0)
 left_right_velocity = 0
 for_back_velocity = 0
 up_down_velocity = 0
 yaw_velocity = 0
 
+# Wait 2 second to get respond of camera
+time.sleep(2.0)
+
 while True:
 
+    # Take a frame
     frame_read = tello.get_frame_read()
+    # convert frame into an array
     frame = np.array(frame_read.frame)
+    # process the image and return the center of the object detected and radius
     x, y, r, video = procesing(frame)
+    #return a number that tell the drone how to move
     dir = track_drone_track(x, y)
+    # return a number that tell the drone to move back or forward depending of the radius of the object
     mov = susana_distancia(r)
+    # display grid in the video
     video_2 = display_grid(video)
+    # display battery and logo in the video
     video_user = display_battery(display_text(video_2))
 
-
+    # Display information to the user
     print(f"x = {x} y = {y} r = {r}")
     print(f"dir = {dir} mov = {mov} counter = {counter}")
 
+    # Drone Takeoff
     if counter == 60:
         tello.takeoff()
 
-
+    # Send velocities to move drone in different ways depending the number it gets
     if dir == 1:
         yaw_velocity = -25
     elif dir == 2:
@@ -221,6 +235,7 @@ while True:
         up_down_velocity = 0
         yaw_velocity = 0
 
+    # If the drone is centered with the figure it can move back or forward depending the radius
     if dir == 0:
         if mov == 1:
             left_right_velocity = 0
@@ -238,27 +253,28 @@ while True:
             up_down_velocity = 0
             yaw_velocity = 0
 
-
-
-
+    # Send the velocities to drone
     if tello.send_rc_control:
         tello.send_rc_control(left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity)
 
-
     counter = counter+1
 
+    # Display the image
     cv2.imshow('Drone X', video_user)
+
+    # comming soon (emergency bottom)
     if cv2.waitKey(20) & 0xFF == 'e':
         tello.emergency()
 
+    # coming soon (quit video)
     if cv2.waitKey(20) & 0xFF == 27:
         break
 
 
-# Never forget first to release
+# Release
 # And then to destroy
 tello.stop_video_capture()
-cap.release()
+video_user.release()
 cv2.destroyAllWindows()
 
 
