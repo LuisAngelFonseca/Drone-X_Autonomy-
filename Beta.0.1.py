@@ -11,18 +11,22 @@ def display_grid(frame):
     """Display grid on the video"""
     # Change the the frame of BGR to Gray
     # Display each line of the greed
-    cv2.line(frame, pt1=(320, 0), pt2=(320, 720), color=(255, 0, 0), thickness=2)
-    cv2.line(frame, pt1=(640, 0), pt2=(640, 720), color=(255, 0, 0), thickness=2)
-    cv2.line(frame, pt1=(0, 240), pt2=(960, 240), color=(255, 0, 0), thickness=2)
-    cv2.line(frame, pt1=(0, 480), pt2=(960, 480), color=(255, 0, 0), thickness=2)
-    return frame
+    x1 = 460-100
+    x2 = 500+100
+    y1 = 340-65
+    y2 = 380+65
+    cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
+    cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
+    cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
+    cv2.line(frame, pt1=(0, y2), pt2=(960, y2), color=(255, 0, 0), thickness=2)
+    return x1, x2, y1, y2, frame
 
 def display_text(img_equ):
     """Display text in the video"""
     # Diplay text in the image
     font = cv2.FONT_ITALIC
 
-    cv2.putText(img_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(255, 255, 255),
+    cv2.putText(img_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
                 thickness=2, lineType=cv2.LINE_8)
 
     return img_equ
@@ -36,16 +40,16 @@ def display_battery(img_equ):
 
     # Display a complete battery
     if battery > 75:
-        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(255, 255, 255), thickness=-1)
-        cv2.rectangle(img_equ, pt1=(932, 9), pt2=(938, 21), color=(255, 255, 255), thickness=-1)
-        cv2.rectangle(img_equ, pt1=(940, 9), pt2=(947, 21), color=(255, 255, 255), thickness=-1)
+        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 0), thickness=-1)
+        cv2.rectangle(img_equ, pt1=(932, 9), pt2=(938, 21), color=(0, 255, 0), thickness=-1)
+        cv2.rectangle(img_equ, pt1=(940, 9), pt2=(947, 21), color=(0, 255, 0), thickness=-1)
     #Display a 2/3 of the battery
     elif battery < 75 and battery > 50:
-        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(255, 255, 255), thickness=-1)
-        cv2.rectangle(img_equ, pt1=(932, 9), pt2=(940, 21), color=(255, 255, 255), thickness=-1)
+        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 255), thickness=-1)
+        cv2.rectangle(img_equ, pt1=(932, 9), pt2=(940, 21), color=(0, 255, 255), thickness=-1)
     #Display 1/3 of the battery
     elif battery < 50 and battery > 25:
-        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(255, 255, 255), thickness=-1)
+        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
     return img_equ
 
@@ -121,30 +125,30 @@ def procesing(frame):
     return(x, y, radius, frame)
 
 
-def track_drone_track(x, y):
+def track_drone_track(x, y, limitx1, limitx2, limity1, limity2):
     dirr = 0
-    if x < 640 and x > 320:
-        if y < 480 and y > 240:
+    if x < limitx2 and x > limitx1:
+        if y < limity2 and y > limity1:
             dirr = 0
-        elif y > 480:
+        elif y > limity2:
             dirr = 4
-        elif y < 240:
+        elif y < limity1:
             dirr = 3
-    elif y < 480 and y > 240:
-        if x < 640 and x > 320:
+    elif y < limity2 and y > limity1:
+        if x < limitx2 and x > limitx1:
             dirr = 0
-        elif x > 640:
+        elif x > limitx2:
             dirr = 2
-        elif x < 320:
+        elif x < limitx1:
             dirr = 1
 
-    elif x < 320 and y < 240:
+    elif x < limitx1 and y < limity1:
         dirr = 5
-    elif x > 640 and y < 240:
+    elif x > limitx2 and y < limity1:
         dirr = 6
-    elif x < 320 and y > 480:
+    elif x < limitx1 and y > limity1:
         dirr = 7
-    elif x > 640 and y > 640:
+    elif x > limitx2 and y > limity2:
         dirr = 8
 
     else:
@@ -214,6 +218,37 @@ def drone_stay_close(dir, mov, velocity1, velocity2):
     # Send the velocities to drone
     return left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity
 
+def dinamic_speed(x, y):
+
+    if (x < 500 and x > 230) and (y < 240 and y > 170):
+        velocidad = 10
+    elif (x < 730 and x > 500) and (y < 380 and y > 170):
+        velocidad = 20
+    elif (x < 730 and x > 460) and (y < 550 and y > 380):
+        velocidad = 10
+    elif (x < 460 and x > 230) and (y < 550 and y > 340):
+        velocidad = 20
+
+    elif (x < 884 and x > 230) and (y < 170 and y > 56):
+        velocidad = 20
+    elif (x < 884 and x > 730) and (y < 664 and y > 170):
+        velocidad = 30
+    elif (x < 730 and x > 230) and (y < 664 and y > 550):
+        velocidad = 20
+    elif (x < 230 and x > 76) and (y < 550 and y > 56):
+        velocidad = 30
+
+    elif x < 76 or x > 884 or y < 56 or y > 664:
+        velocidad = 45
+
+    else:
+        velocidad = 30
+
+    return velocidad
+
+
+
+
 
 # Create an instance of Drone Tello
 tello = Tello()
@@ -243,15 +278,15 @@ while True:
     frame = np.array(frame_read.frame)
     # process the image and return the center of the object detected and radius
     x, y, r, video = procesing(frame)
-    #return a number that tell the drone how to move
-    dir = track_drone_track(x, y)
-    # return a number that tell the drone to move back or forward depending of the radius of the object
-    mov = susana_distancia(r)
     # display grid in the video
-    video_2 = display_grid(video)
+    x_1, x_2, y_1, y_2, video_2 = display_grid(video)
     # display battery and logo in the video
     video_user = display_battery(display_text(video_2))
-
+    # return a number that tell the drone how to move
+    dir = track_drone_track(x, y, x_1, x_2, y_1, y_2)
+    # return a number that tell the drone to move back or forward depending of the radius of the object
+    mov = susana_distancia(r)
+    speed = dinamic_speed(x, y)
     # Display information to the user
     print(f"x = {x} y = {y} r = {r}")
     print(f"dir = {dir} mov = {mov} counter = {counter}")
@@ -261,7 +296,7 @@ while True:
         tello.takeoff()
         send_rc_control = True
 
-    left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity = drone_stay_close(dir, mov, 30, 20)
+    left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity = drone_stay_close(dir, mov, speed, 20)
     # Send the velocities to drone
     time.sleep(1/30)
     if send_rc_control:
@@ -274,7 +309,7 @@ while True:
     cv2.imshow('Drone X', video_user)
     time.sleep(1 / 30)
 
-    # coming soon (quit video)
+    # Close video and finish the program
     if cv2.waitKey(5) & 0xFF == ord('q'):
         send_rc_control = False
         time.sleep(3.0)
@@ -283,7 +318,5 @@ while True:
         cv2.destroyAllWindows()
         break
 
-
-# Release
-# And then to destroy
+#Drone land
 tello.land()
