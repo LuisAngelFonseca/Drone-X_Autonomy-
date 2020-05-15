@@ -5,21 +5,21 @@ import numpy as np
 import time
 import argparse
 import imutils
+import math
 
 
-def display_grid(frame):
+def display_grid(frame, r):
     """Display grid on the video"""
-    # Change the the frame of BGR to Gray
-    # Display each line of the greed
-    x1 = 460-100
-    x2 = 500+100
-    y1 = 340-65
-    y2 = 380+65
+    # Display each line of the dynamic grid
+    x1 = int(480 - (r + 80))
+    x2 = int(480 + (r + 80))
+    y1 = int(360 - (r + 40))
+    y2 = int(360 + (r + 40))
     cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y2), pt2=(960, y2), color=(255, 0, 0), thickness=2)
-    return x1, x2, y1, y2, frame
+    return x1, x2, y1, y2, frame # Return the position of each line and the frame
 
 def display_text(img_equ):
     """Display text in the video"""
@@ -29,7 +29,7 @@ def display_text(img_equ):
     cv2.putText(img_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
                 thickness=2, lineType=cv2.LINE_8)
 
-    return img_equ
+    return img_equ #Return the frame with the text
 
 def display_battery(img_equ):
     """Display a battery in the video that indicate the percentage of battery"""
@@ -51,10 +51,10 @@ def display_battery(img_equ):
     elif battery < 50 and battery > 25:
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
-    return img_equ
+    return img_equ # Return the frame with the battery
 
 def procesing(frame):
-    """Track the color in video"""
+    """Track the color in the frame"""
     # construct the argument parse and parse the arguments
     ap = argparse.ArgumentParser()
     ap.add_argument("-v", "--video",
@@ -66,8 +66,13 @@ def procesing(frame):
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
     # Lemmons color range
-    greenLower = (29, 86, 6)
-    greenUpper = (64, 255, 255)
+    greenLower = (90, 80, 55)
+    greenUpper = (107, 251, 255)
+
+    # (29, 86, 6)
+    # (64, 255, 255)
+    # (90, 80, 55)
+    # (107, 251, 255)
 
     pts = deque(maxlen=args["buffer"])
 
@@ -122,10 +127,10 @@ def procesing(frame):
         thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
         cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
-    return(x, y, radius, frame)
-
+    return(x, y, radius, frame) # Return the position and radius of the object and also the frame
 
 def track_drone_track(x, y, limitx1, limitx2, limity1, limity2):
+    """Return instruction on how to move to the drone based on position and the greed """
     dirr = 0
     if x < limitx2 and x > limitx1:
         if y < limity2 and y > limity1:
@@ -154,9 +159,10 @@ def track_drone_track(x, y, limitx1, limitx2, limity1, limity2):
     else:
         dirr = 0
 
-    return dirr
+    return dirr # Return the instruction number from 0-8
 
 def susana_distancia(r):
+    """Return instruction from 0 - 2 to tello to stay close o fly away """
     if r > 20 and r < 40:
         mov = 0
     elif r > 40:
@@ -165,7 +171,8 @@ def susana_distancia(r):
         mov = 2
     else:
         mov = 0
-    return mov
+
+    return mov # Return an instruction from 0 - 2
 
 def drone_stay_close(dir, mov, velocity1, velocity2):
     """Control velocities to track object"""
@@ -219,104 +226,95 @@ def drone_stay_close(dir, mov, velocity1, velocity2):
     return left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity
 
 def dinamic_speed(x, y):
-
-    if (x < 500 and x > 230) and (y < 240 and y > 170):
-        velocidad = 10
-    elif (x < 730 and x > 500) and (y < 380 and y > 170):
-        velocidad = 20
-    elif (x < 730 and x > 460) and (y < 550 and y > 380):
-        velocidad = 10
-    elif (x < 460 and x > 230) and (y < 550 and y > 340):
-        velocidad = 20
-
-    elif (x < 884 and x > 230) and (y < 170 and y > 56):
-        velocidad = 20
-    elif (x < 884 and x > 730) and (y < 664 and y > 170):
-        velocidad = 30
-    elif (x < 730 and x > 230) and (y < 664 and y > 550):
-        velocidad = 20
-    elif (x < 230 and x > 76) and (y < 550 and y > 56):
-        velocidad = 30
-
-    elif x < 76 or x > 884 or y < 56 or y > 664:
-        velocidad = 45
-
-    else:
-        velocidad = 30
+    """
+    Calculate the distance between the center and the position of the object
+    then is multiplied by a factor that return a velocitie near 0 if the object is near the center of the screen
+    and if the object is near the edges return a value near 70
+    """
+    velocidad = int((math.sqrt((x-480)**2+(y-360)**2))*(70/600))
 
     return velocidad
 
 
+# Setup
 
+tello = Tello()   # Create an instance of Drone Tello
 
+tello.connect()   # Connect to Drone
 
-# Create an instance of Drone Tello
-tello = Tello()
-#Connect to Drone
-tello.connect()
-# Send message to drone to start stream
-tello.streamon()
+tello.streamon()  # Send message to drone to start stream
 
-# Create some variables
-counter = 0
-dir = 0
+counter = 0       # Create a counter for the takeoff and activate rc control
+dir = 0           # This variable will send a number from 0 to 8 each number tell the drone how to move
 
+#########################
+#       #       #       #
+#   5   #   3   #   6   #
+#       #       #       #
+#########################
+#       #       #       #
+#   1   #   0   #   2   #
+#       #       #       #
+#########################
+#       #       #       #
+#   7   #   4   #   8   #
+#       #       #       #
+#########################
 
-# Wait 2 second to get respond of camera
-time.sleep(2.0)
-send_rc_control = False
+time.sleep(2.0)   # Wait 2 second to get respond of camera
+send_rc_control = False # This variable is false until we want to send rc control commands to drone, this is after the takeoff
 
+# Main
 while True:
+    # Restore values to 0, to clean past values
     left_right_velocity = 0
     for_back_velocity = 0
     up_down_velocity = 0
     yaw_velocity = 0
 
-    # Take a frame
-    frame_read = tello.get_frame_read()
-    # convert frame into an array
-    frame = np.array(frame_read.frame)
-    # process the image and return the center of the object detected and radius
-    x, y, r, video = procesing(frame)
-    # display grid in the video
-    x_1, x_2, y_1, y_2, video_2 = display_grid(video)
-    # display battery and logo in the video
-    video_user = display_battery(display_text(video_2))
-    # return a number that tell the drone how to move
-    dir = track_drone_track(x, y, x_1, x_2, y_1, y_2)
-    # return a number that tell the drone to move back or forward depending of the radius of the object
-    mov = susana_distancia(r)
-    speed = dinamic_speed(x, y)
-    # Display information to the user
-    print(f"x = {x} y = {y} r = {r}")
+    frame_read = tello.get_frame_read()                  # Capture a frame from drone camera
+    frame = np.array(frame_read.frame)                   # Frame turn into an array
+    x, y, r, video = procesing(frame)                    # Getting the position of the object, radius and tracking the object in the frame
+    x_1, x_2, y_1, y_2, video_2 = display_grid(video, r) # Display grid in the actual frame, take video and radius of the object as arguments
+                                                         # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
+
+    video_user = display_battery(display_text(video_2))  # Display battery and logo in the video
+    dir = track_drone_track(x, y, x_1, x_2, y_1, y_2)    # Takes the position of the object (x, y) and the center square of the grid
+                                                         # to tell the drone how to move in 9 diferent cases(the big drawing tell what this function return)
+
+    mov = susana_distancia(r)                            # Takes the radius of the object and return a number from 0 to 2
+                                                         # 0 = don't move 1 = get away from object 2 = get closer from object
+
+    speed = dinamic_speed(x, y)                          # Magic function that takes the position of the object and calculated the distance from the center
+                                                         # return a velocity proportional to the distance 0-100
+
+    print(f"x = {x} y = {y} r = {r} speed = {speed}")    # Display information to the user
     print(f"dir = {dir} mov = {mov} counter = {counter}")
 
-    # Drone Takeoff
-    if counter == 40:
-        tello.takeoff()
-        send_rc_control = True
 
+    if counter == 40:
+        tello.takeoff()               # Drone Takeoff
+        send_rc_control = True         # Turn on the rc control
+
+    # Takes dir(0-8), mov(0-2), speed(0-70) and velocity_2 = 20 and return 4 velocities that will be send to the drone
     left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity = drone_stay_close(dir, mov, speed, 20)
-    # Send the velocities to drone
-    time.sleep(1/30)
-    if send_rc_control:
+
+    time.sleep(1/30)                  # Delay
+    if send_rc_control:               # If true, we send 4 velocities to drone(each velocity can take de value from -100 to 100)
         tello.send_rc_control(left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity)
 
-    counter = counter+1
+    counter = counter+1               # Update counter
 
-
-    # Display the image
-    cv2.imshow('Drone X', video_user)
-    time.sleep(1 / 30)
+    cv2.imshow('Drone X', video_user) # Display the video
+    time.sleep(1 / 30)                # Delay
 
     # Close video and finish the program
     if cv2.waitKey(5) & 0xFF == ord('q'):
         send_rc_control = False
-        time.sleep(3.0)
         frame_read.stop()
         tello.stop_video_capture()
         cv2.destroyAllWindows()
+        time.sleep(3.0)
         break
 
-#Drone land
-tello.land()
+tello.land()                        #Drone land
