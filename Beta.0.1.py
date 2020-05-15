@@ -13,10 +13,10 @@ import math
 def display_grid(frame, r):
     """Display grid on the video"""
     # Display each line of the dynamic grid
-    x1 = int(480 - (r + 40))
-    x2 = int(480 + (r + 40))
-    y1 = int(360 - (r + 30))
-    y2 = int(360 + (r + 30))
+    x1 = int(480 - (r - 80))
+    x2 = int(480 + (r - 80))
+    y1 = int(300 - (r - 60))
+    y2 = int(300 + (r - 60))
     cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
@@ -38,7 +38,11 @@ def display_battery(img_equ):
     # Display a battery in the image
     cv2.rectangle(img_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness= 2)
     cv2.rectangle(img_equ, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
-    battery = tello.get_battery() #Get battery level of the drone
+    try:
+        battery = int(tello.get_battery()) #Get battery level of the drone
+    except:
+        battery = 0
+
 
     # Display a complete battery
     if battery > 75:
@@ -112,7 +116,7 @@ def procesing(frame):
     else:
         x = 480
         y = 360
-        radius = 30
+        radius = 300
 
     # update the points queue
     pts.appendleft(center)
@@ -181,9 +185,9 @@ def drone_stay_close(dir, mov, velocity1, velocity2):
     global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity
     # Send velocities to move drone in different ways depending the number it gets
     if dir == 1:
-        yaw_velocity = -velocity1
+        left_right_velocity = -velocity1
     elif dir == 2:
-        yaw_velocity = velocity1
+        left_right_velocity = velocity1
     elif dir == 3:
         up_down_velocity = velocity1
     elif dir == 4:
@@ -233,7 +237,7 @@ def dinamic_speed(x, y):
     then is multiplied by a factor that return a velocitie near 0 if the object is near the center of the screen
     and if the object is near the edges return a value near 70
     """
-    velocidad = int((math.sqrt((x-480)**2+(y-360)**2))*(70/600))
+    velocidad = int((math.sqrt((x-480)**2+(y-300)**2))*(70/600))
 
     return velocidad
 
@@ -295,11 +299,11 @@ while True:
 
 
     if counter == 40:
-        tello.takeoff()               # Drone Takeoff
+        #tello.takeoff()               # Drone Takeoff
         send_rc_control = True         # Turn on the rc control
 
     # Takes dir(0-8), mov(0-2), speed(0-70) and velocity_2 = 20 and return 4 velocities that will be send to the drone
-    left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity = drone_stay_close(dir, mov, speed, 20)
+    left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity = drone_stay_close(dir, mov, speed, 10)
 
     time.sleep(1/30)                  # Delay
     if send_rc_control:               # If true, we send 4 velocities to drone(each velocity can take de value from -100 to 100)
