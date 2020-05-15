@@ -55,6 +55,7 @@ def display_battery(img_equ):
 
     return img_equ # Return the frame with the battery
 
+
 def procesing(frame):
     """Track the color in the frame"""
     # construct the argument parse and parse the arguments
