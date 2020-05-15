@@ -8,13 +8,15 @@ import imutils
 import math
 
 
+
+
 def display_grid(frame, r):
     """Display grid on the video"""
     # Display each line of the dynamic grid
-    x1 = int(480 - (r + 80))
-    x2 = int(480 + (r + 80))
-    y1 = int(360 - (r + 40))
-    y2 = int(360 + (r + 40))
+    x1 = int(480 - (r + 40))
+    x2 = int(480 + (r + 40))
+    y1 = int(360 - (r + 30))
+    y2 = int(360 + (r + 30))
     cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
@@ -163,11 +165,11 @@ def track_drone_track(x, y, limitx1, limitx2, limity1, limity2):
 
 def susana_distancia(r):
     """Return instruction from 0 - 2 to tello to stay close o fly away """
-    if r > 20 and r < 40:
+    if r > 220 and r < 240:
         mov = 0
-    elif r > 40:
+    elif r > 240:
         mov = 1
-    elif r < 20:
+    elif r < 220:
         mov = 2
     else:
         mov = 0
@@ -204,7 +206,7 @@ def drone_stay_close(dir, mov, velocity1, velocity2):
         up_down_velocity = 0
         yaw_velocity = 0
 
-    # If the drone is centered with the figure it can move back or forward depending the radius
+    # If the drone is centered with the object it can move back or forward depending the radius
     if dir == 0:
         if mov == 1:
             left_right_velocity = 0
