@@ -7,16 +7,13 @@ import argparse
 import imutils
 import math
 
-
-
-
 def display_grid(frame, r):
     """Display grid on the video"""
     # Display each line of the dynamic grid
-    x1 = int(480 - (r - 80))
-    x2 = int(480 + (r - 80))
-    y1 = int(300 - (r - 60))
-    y2 = int(300 + (r - 60))
+    x1 = int(480 - (r + 80))
+    x2 = int(480 + (r + 80))
+    y1 = int(360 - (r + 60))
+    y2 = int(360 + (r + 60 ))
     cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
@@ -57,7 +54,7 @@ def display_battery(img_equ):
     elif battery < 50 and battery > 25:
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
-    return img_equ # Return the frame with the battery
+    return img_equ # Return the frame with the batteryqqqqqq
 
 def procesing(frame):
     """Track the color in the frame"""
@@ -72,8 +69,8 @@ def procesing(frame):
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
     # Lemmons color range
-    greenLower = (90, 80, 55)
-    greenUpper = (107, 251, 255)
+    greenLower = (29, 86, 6)
+    greenUpper = (64, 255, 255)
 
     # (29, 86, 6)
     # (64, 255, 255)
@@ -116,7 +113,7 @@ def procesing(frame):
     else:
         x = 480
         y = 360
-        radius = 300
+        radius = 30
 
     # update the points queue
     pts.appendleft(center)
@@ -169,14 +166,15 @@ def track_drone_track(x, y, limitx1, limitx2, limity1, limity2):
 
 def susana_distancia(r):
     """Return instruction from 0 - 2 to tello to stay close o fly away """
-    if r > 220 and r < 240:
+    if r > 20 and r < 40:
         mov = 0
-    elif r > 240:
+    elif r > 40:
         mov = 1
-    elif r < 220:
+    elif r < 20:
         mov = 2
     else:
         mov = 0
+    return mov
 
     return mov # Return an instruction from 0 - 2
 
@@ -185,9 +183,9 @@ def drone_stay_close(dir, mov, velocity1, velocity2):
     global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity
     # Send velocities to move drone in different ways depending the number it gets
     if dir == 1:
-        left_right_velocity = -velocity1
+        yaw_velocity = -velocity1
     elif dir == 2:
-        left_right_velocity = velocity1
+        yaw_velocity = velocity1
     elif dir == 3:
         up_down_velocity = velocity1
     elif dir == 4:
@@ -237,7 +235,7 @@ def dinamic_speed(x, y):
     then is multiplied by a factor that return a velocitie near 0 if the object is near the center of the screen
     and if the object is near the edges return a value near 70
     """
-    velocidad = int((math.sqrt((x-480)**2+(y-300)**2))*(70/600))
+    velocidad = int((math.sqrt((x-480)**2+(y-360)**2))*(70/600))
 
     return velocidad
 
