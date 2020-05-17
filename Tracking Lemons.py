@@ -118,7 +118,7 @@ def procesing(frame):
         found_something = False
         x = 480
         y = 360
-        r = 40
+        radius = 40
 
 
     # update the points queue
@@ -177,7 +177,7 @@ while True:
     frame_read = tello.get_frame_read()                  # Capture a frame from drone camera
     frame = np.array(frame_read.frame)                   # Frame turn into an array
     x, y, r, found_something, video = procesing(frame)                    # Getting the position of the object, radius and tracking the object in the frame
-    x_1, x_2, y_1, y_2, video_2 = display_grid(video, r, x, y) # Display grid in the actual frame, take video and radius of the object as arguments
+    x_1, x_2, y_1, y_2, video_2 = display_grid(video, 80, x, y) # Display grid in the actual frame, take video and radius of the object as arguments
                                                          # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
 
     video_user = display_battery(display_text(video_2))  # Display battery and logo in the video
