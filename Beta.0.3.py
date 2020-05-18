@@ -274,26 +274,22 @@ while True:
     # This checks if we are in the debug mode,
     if args.debug:
         print("DEBUG MODE ENABLED!")
-        # initial track bar limits
-        ilowH = 0
-        ihighH = 255
 
-        ilowS = 0
-        ihighS = 255
-
-        ilowV = 0
-        ihighV = 255
         # create trackbars for color change
         cv2.namedWindow("Color Calibration")
+        cv2.resizeWindow('Color Calibration', 640, 300)
         # HUE
-        cv2.createTrackbar('Hue Min', 'Color Calibration', ilowH, 179, callback)
-        cv2.createTrackbar('Hue Max', 'Color Calibration', ihighH, 179, callback)
+        cv2.createTrackbar('Hue Min', 'Color Calibration', 0, 179, callback)
+        cv2.createTrackbar('Hue Max', 'Color Calibration', 179, 179, callback)
         # SATURATION
-        cv2.createTrackbar('Sat Min', 'Color Calibration', ilowS, 255, callback)
-        cv2.createTrackbar('Sat Max', 'Color Calibration', ihighS, 255, callback)
-
-        cv2.createTrackbar('Val Min', 'Color Calibration', ilowV, 255, callback)
-        cv2.createTrackbar('Val Max', 'Color Calibration', ihighV, 255, callback)
+        cv2.createTrackbar('Sat Min', 'Color Calibration', 0, 255, callback)
+        cv2.createTrackbar('Sat Max', 'Color Calibration', 255, 255, callback)
+        # VALUES
+        cv2.createTrackbar('Val Min', 'Color Calibration', 0, 255, callback)
+        cv2.createTrackbar('Val Max', 'Color Calibration', 255, 255, callback)
+        # ITERATIONS
+        cv2.createTrackbar('Erosion', 'Color Calibration', 0, 30, callback)
+        cv2.createTrackbar('Dilation', 'Color Calibration', 0, 30, callback)
 
     # aqui van las cosas que irian en el main normal
     while not Main_Real:
@@ -317,17 +313,19 @@ while True:
             s_max = cv2.getTrackbarPos('Sat Max', 'Color Calibration')
             v_min = cv2.getTrackbarPos('Val Min', 'Color Calibration')
             v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
+            erosion = cv2.getTrackbarPos('Erosion', 'Color Calibration')
+            dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
             # Apply a Gaussian Blur to the image in order to reduce detail
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-            #Create HSV image, passing it from bgr
+            #Create HSV image, passing it from BGR
             frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
             lower_hsv = np.array([h_min, s_min, v_min])
             upper_hsv = np.array([h_max, s_max, v_max])
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
-            mask = cv2.erode(mask, None, iterations=5)
-            mask = cv2.dilate(mask, None, iterations=5)
+            mask = cv2.erode(mask, None, iterations=erosion)
+            mask = cv2.dilate(mask, None, iterations=dilation)
 
             frameResult = cv2.bitwise_and(frame, frame, mask=mask)
 
