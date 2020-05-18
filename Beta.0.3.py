@@ -110,74 +110,60 @@ def display_battery(img_equ):
 
 def processing(frame):
     """Track the color in the frame"""
-    # construct the argument parse and parse the arguments
 
-    blurred = cv2.GaussianBlur(frame, (11,11), 0)
-    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+    # Color range of wanted object
+    color_lower = (90, 80, 55)
+    color_upper = (107, 251, 255)
 
-    # Lemmons color range
-    greenLower = (29, 86, 6)
-    greenUpper = (64, 255, 255)
+    # blur it, and convert it to the HSV color space
+    blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+    frameHSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-    # (29, 86, 6)
-    # (64, 255, 255)
-    # (90, 80, 55)
-    # (107, 251, 255)
-    buffer = 64
-    pts = deque(maxlen=buffer)
-
-    # construct a mask for the color "green", then perform
+    # construct a mask for the color, then perform
     # a series of dilations and erosions to remove any small
     # blobs left in the mask
-    mask = cv2.inRange(hsv, greenLower, greenUpper)
+    mask = cv2.inRange(frameHSV, color_lower, color_upper)
     mask = cv2.erode(mask, None, iterations=2)
     mask = cv2.dilate(mask, None, iterations=2)
 
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
-    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-                            cv2.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
+    contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = imutils.grab_contours(contours)
     center = None
 
+    contours_circles = []
+
     # only proceed if at least one contour was found
-    if len(cnts) > 0:
+    if len(contours) > 0:
+        for contour in contours:
+            perimeter = cv2.arcLength(contour, True)
+            area = cv2.contourArea(contour)
+            circularity = 4 * math.pi * (area / (perimeter * perimeter))
+            if 0.85 < circularity < 1.05:
+                contours_circles.append(contour)
+
+    if len(contours_circles) > 0:
         # find the largest contour in the mask, then use
         # it to compute the minimum enclosing circle and
         # centroid
-        c = max(cnts, key=cv2.contourArea)
-        ((x, y), radius) = cv2.minEnclosingCircle(c)
-        M = cv2.moments(c)
+        centroid = max(contours_circles, key=cv2.contourArea)
+        ((x_circle, y_circle), radius) = cv2.minEnclosingCircle(centroid)
+        M = cv2.moments(centroid)
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+        x, y = center
 
         # only proceed if the radius meets a minimum size
-        if radius > 10:
-            # draw the circle and centroid on the frame,
-            # then update the list of tracked points
-            cv2.circle(frame, (int(x), int(y)), int(radius),
-                       (0, 255, 255), 2)
+        if radius > 15:
+            # draw the circle and centroid on the frame
+            cv2.circle(frame, (int(x_circle), int(y_circle)), int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
     else:
         x = 480
         y = 360
         radius = 40
 
-    # update the points queue
-    pts.appendleft(center)
-
-    # loop over the set of tracked points
-    for i in range(1, len(pts)):
-        # if either of the tracked points are None, ignore
-        # them
-        if pts[i - 1] is None or pts[i] is None:
-            continue
-
-        # otherwise, compute the thickness of the line and
-        # draw the connecting lines
-        thickness = int(np.sqrt(buffer / float(i + 1)) * 2.5)
-        cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
-
-    return(x, y, radius, frame) # Return the position and radius of the object and also the frame
+    return (x, y, radius, frame)  # Return the position and radius of the object and also the frame
 
 def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradius, tolerance):
     """Control velocities to track object"""
