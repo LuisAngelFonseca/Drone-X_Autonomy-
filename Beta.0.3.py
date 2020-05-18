@@ -29,6 +29,39 @@ oSpeed = 1
 def callback(x):
     pass
 
+def stackImages(scale, imgArray):
+    rows = len(imgArray)
+    cols = len(imgArray[0])
+    rowsAvailable = isinstance(imgArray[0], list)
+    width = imgArray[0][0].shape[1]
+    height = imgArray[0][0].shape[0]
+    if rowsAvailable:
+        for x in range(0, rows):
+            for y in range(0, cols):
+                if imgArray[x][y].shape[:2] == imgArray[0][0].shape[:2]:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (0, 0), None, scale, scale)
+                else:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]),
+                                                None, scale, scale)
+                if len(imgArray[x][y].shape) == 2: imgArray[x][y] = cv2.cvtColor(imgArray[x][y], cv2.COLOR_GRAY2BGR)
+        imageBlank = np.zeros((height, width, 3), np.uint8)
+        hor = [imageBlank] * rows
+        hor_con = [imageBlank] * rows
+        for x in range(0, rows):
+            hor[x] = np.hstack(imgArray[x])
+        ver = np.vstack(hor)
+    else:
+        for x in range(0, rows):
+            if imgArray[x].shape[:2] == imgArray[0].shape[:2]:
+                imgArray[x] = cv2.resize(imgArray[x], (0, 0), None, scale, scale)
+            else:
+                imgArray[x] = cv2.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None, scale, scale)
+            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
+        hor = np.hstack(imgArray)
+        ver = hor
+    return ver
+
+
 def display_grid(frame, size, x, y):
     """Display grid on the video"""
     # Display each line of the dynamic grid
@@ -45,6 +78,7 @@ def display_grid(frame, size, x, y):
 
     return x1, x2, y1, y2, frame # Return the position of each line and the frame
 
+
 def display_text(img_equ):
     """Display text in the video"""
     # Diplay text in the image
@@ -54,6 +88,7 @@ def display_text(img_equ):
                 thickness=2, lineType=cv2.LINE_8)
 
     return img_equ  # Return the frame with the text
+
 
 def display_battery(img_equ):
     """Display a battery in the video that indicate the percentage of battery"""
@@ -104,6 +139,7 @@ def display_battery(img_equ):
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
     return img_equ
+
 
 def processing(frame):
     """Track the color in the frame"""
