@@ -141,7 +141,7 @@ def display_battery(img_equ):
     return img_equ
 
 
-def processing(frame,lower_hsv, upper_hsv):
+def processing(frame, lower_hsv, upper_hsv):
     """Track the color in the frame"""
 
     if args.debug:
@@ -184,23 +184,23 @@ def processing(frame,lower_hsv, upper_hsv):
         # find the largest contour in the mask, then use
         # it to compute the minimum enclosing circle and
         # centroid
-        centroid = max(contours_circles, key=cv2.contourArea)
-        ((x_circle, y_circle), radius) = cv2.minEnclosingCircle(centroid)
-        M = cv2.moments(centroid)
+        max_contour = max(contours_circles, key=cv2.contourArea)
+        radius = cv2.minEnclosingCircle(max_contour)[1]
+        M = cv2.moments(max_contour)
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
         x, y = center
 
         # only proceed if the radius meets a minimum size
         if radius > 15:
             # draw the circle and centroid on the frame
-            cv2.circle(frame, (int(x_circle), int(y_circle)), int(radius), (0, 255, 255), 2)
+            cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
     else:
         x = 480
         y = 360
         radius = 40
 
-    return (x, y, radius, frame)  # Return the position and radius of the object and also the frame
+    return x, y, radius, frame  # Return the position and radius of the object and also the frame
 
 def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradius, tolerance):
     """Control velocities to track object"""
