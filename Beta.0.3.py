@@ -277,7 +277,7 @@ while True:
 
         # create trackbars for color change
         cv2.namedWindow("Color Calibration")
-        cv2.resizeWindow('Color Calibration', 640, 300)
+        cv2.resizeWindow('Color Calibration', 300, 350)
         # HUE
         cv2.createTrackbar('Hue Min', 'Color Calibration', 0, 179, callback)
         cv2.createTrackbar('Hue Max', 'Color Calibration', 179, 179, callback)
