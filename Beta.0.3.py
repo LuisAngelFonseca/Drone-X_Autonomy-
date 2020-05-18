@@ -379,14 +379,15 @@ while True:
         # display battery and logo in the video
         video_user = display_battery(display_text(video_2))
 
-        left_right_velocity = 0
-        for_back_velocity = 0
-        up_down_velocity = 0
-        yaw_velocity = 0
-
         if send_rc_control and not OVERRIDE:
 
             if not args.debug:
+
+                left_right_velocity = 0
+                for_back_velocity = 0
+                up_down_velocity = 0
+                yaw_velocity = 0
+
                 yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1, y_2, r, 40, 5)
 
                 # Display information to the user
