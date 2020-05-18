@@ -45,7 +45,6 @@ def display_grid(frame, size, x, y):
 
     return x1, x2, y1, y2, frame # Return the position of each line and the frame
 
-
 def display_text(img_equ):
     """Display text in the video"""
     # Diplay text in the image
@@ -55,7 +54,6 @@ def display_text(img_equ):
                 thickness=2, lineType=cv2.LINE_8)
 
     return img_equ  # Return the frame with the text
-
 
 def display_battery(img_equ):
     """Display a battery in the video that indicate the percentage of battery"""
@@ -106,7 +104,6 @@ def display_battery(img_equ):
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
     return img_equ
-
 
 def processing(frame):
     """Track the color in the frame"""
