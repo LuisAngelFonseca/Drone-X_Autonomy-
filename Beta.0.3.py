@@ -268,6 +268,7 @@ while True:
     frameCount = 0
     # esta variable hace que puedas controlar al dron con la barra espaciadora
     OVERRIDE = False
+    #check tello battery
     tello.get_battery()
 
     # This checks if we are in the debug mode,
