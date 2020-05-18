@@ -16,13 +16,13 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                     help='** = required')
 parser.add_argument('-D', "--debug", action='store_true',
-    help='add the -D flag to enable debug mode. Everything works the same, but no commands will be sent to the drone')
+                    help='add the -D flag to enable debug mode. Everything works the same, but no commands will be sent to the drone')
 
 args = parser.parse_args()
 
 # Speed of the drone
 S = 40
-#Factor de velocidad
+# Factor de velocidad
 oSpeed = 1
 
 
@@ -45,6 +45,7 @@ def display_grid(frame, size, x, y):
 
     return x1, x2, y1, y2, frame # Return the position of each line and the frame
 
+
 def display_text(img_equ):
     """Display text in the video"""
     # Diplay text in the image
@@ -53,20 +54,21 @@ def display_text(img_equ):
     cv2.putText(img_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
                 thickness=2, lineType=cv2.LINE_8)
 
-    return img_equ #Return the frame with the text
+    return img_equ  # Return the frame with the text
+
 
 def display_battery(img_equ):
     """Display a battery in the video that indicate the percentage of battery"""
     # Display a battery in the image
-    cv2.rectangle(img_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness= 2)
+    cv2.rectangle(img_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness=2)
     cv2.rectangle(img_equ, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
 
-    global tiempo_elapsed, tiempo_actual,battery
+    global tiempo_elapsed, tiempo_actual, battery
 
-    #la primera vez la bateria es 100, pero este valor solo dura 5 segundos
+    # la primera vez la bateria es 100, pero este valor solo dura 5 segundos
     battery = 100
     if not args.debug:
-        if tiempo_actual - tiempo_elapsed > 6 :
+        if tiempo_actual - tiempo_elapsed > 6:
             tiempo_elapsed = tiempo_actual
             print("Solicitar Bateria ")
             try:
@@ -78,7 +80,7 @@ def display_battery(img_equ):
             tiempo_actual = int(time.time())
             battery = battery
     elif args.debug:
-        if tiempo_actual - tiempo_elapsed > 24 :
+        if tiempo_actual - tiempo_elapsed > 24:
             tiempo_elapsed = tiempo_actual
             print("Solicitar Bateria Debug")
             try:
@@ -90,24 +92,23 @@ def display_battery(img_equ):
             tiempo_actual = int(time.time())
             battery = battery
 
-
     # Display a complete battery
     if battery > 75:
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 0), thickness=-1)
         cv2.rectangle(img_equ, pt1=(932, 9), pt2=(938, 21), color=(0, 255, 0), thickness=-1)
         cv2.rectangle(img_equ, pt1=(940, 9), pt2=(947, 21), color=(0, 255, 0), thickness=-1)
-    #Display a 2/3 of the battery
+    # Display a 2/3 of the battery
     elif battery < 75 and battery > 50:
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 255), thickness=-1)
         cv2.rectangle(img_equ, pt1=(932, 9), pt2=(940, 21), color=(0, 255, 255), thickness=-1)
-    #Display 1/3 of the battery
+    # Display 1/3 of the battery
     elif battery < 50 and battery > 25:
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
-
     return img_equ
 
-def procesing(frame):
+
+def processing(frame):
     """Track the color in the frame"""
     # construct the argument parse and parse the arguments
 
@@ -197,7 +198,7 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradiu
 # Create an instance of Drone Tello
 tello = Tello()
 
-#Connect to Drone
+# Connect to Drone
 tello.connect()
 
 # Send message to drone to start stream
@@ -218,7 +219,7 @@ counter = 0
 # Frames per second
 FPS = 25
 
-#Create 2 variables that count time
+# Create 2 variables that count time
 tiempo_actual = int(time.time())
 tiempo_elapsed = int(time.time())
 
@@ -239,10 +240,10 @@ while True:
     # Capture a frame from drone camera
     frame_read = tello.get_frame_read()
 
-    #esta variable se encarga de decidir cuando corre el main verdadero y cuando no
+    # esta variable se encarga de decidir cuando corre el main verdadero y cuando no
     Main_Real = False
     frameCount = 0
-    #esta variable hace que puedas controlar al dron con la barra espaciadora
+    # esta variable hace que puedas controlar al dron con la barra espaciadora
     OVERRIDE = False
     tello.get_battery()
 
@@ -261,8 +262,8 @@ while True:
         # create trackbars for color change
         cv2.namedWindow("Config")
         # HUE
-        cv2.createTrackbar('lowH', 'Config', ilowH, 255, callback)
-        cv2.createTrackbar('highH', 'Config', ihighH, 255, callback)
+        cv2.createTrackbar('lowH', 'Config', ilowH, 179, callback)
+        cv2.createTrackbar('highH', 'Config', ihighH, 179, callback)
         # SATURATION
         cv2.createTrackbar('lowS', 'Config', ilowS, 255, callback)
         cv2.createTrackbar('highS', 'Config', ihighS, 255, callback)
@@ -270,7 +271,7 @@ while True:
         cv2.createTrackbar('lowV', 'Config', ilowV, 255, callback)
         cv2.createTrackbar('highV', 'Config', ihighV, 255, callback)
 
-    #aqui van las cosas que irian en el main normal
+    # aqui van las cosas que irian en el main normal
     while not Main_Real:
 
         # Function that updates dron speeds
@@ -281,8 +282,8 @@ while True:
             frame_read.stop()
             break
 
-        # Frame turn into an array
-        frame = np.array(frame_read.frame)
+        # Frame read
+        frame = frame_read.frame
 
         if args.debug:
             ilowH = cv2.getTrackbarPos('lowH', 'Config')
@@ -294,7 +295,7 @@ while True:
             # Read frame
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
 
-            hsv = cv2.cvtColor(blurred, cv2.COLOR_RGB2HSV)
+            hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
             # hsv = np.rot90(hsv)
             cv2.imshow('hsv', hsv)
 
@@ -307,8 +308,8 @@ while True:
             # mask = np.rot90(mask)
 
             cv2.imshow('mask', mask)
-            #print(ilowH, ilowS, ilowV)
-            #print(ihighH, ihighS, ihighV)
+            # print(ilowH, ilowS, ilowV)
+            # print(ihighH, ihighS, ihighV)
 
         # Delay to showcase desired fps in video
         time.sleep(1 / FPS)
@@ -386,7 +387,7 @@ while True:
             break
 
         # Getting the position of the object, radius and tracking the object in the frame
-        x, y, r, video = procesing(frame)
+        x, y, r, video = processing(frame)
 
         # Display grid in the actual frame, take video and radius of the object as arguments
         # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
