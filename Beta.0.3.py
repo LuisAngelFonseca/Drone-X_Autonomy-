@@ -67,8 +67,8 @@ def display_grid(frame, size, x, y):
     # Display each line of the dynamic grid
     x1 = int(480 - (size))
     x2 = int(480 + (size))
-    y1 = int(360 - (size*(3/4)))
-    y2 = int(360 + (size*(3/4)))
+    y1 = int(360 - (size*(3/4))-60)
+    y2 = int(360 + (size*(3/4))-60)
     cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
@@ -409,6 +409,11 @@ while True:
         if k == 27:
             Main_Real = True
             break
+
+        pts1 = np.float32([[140, 0],[820, 0],[0, 666],[960,660]])
+        pts2 = np.float32([[0, 0], [960, 0], [0,720], [960, 720]])
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
+        frame = cv2.warpPerspective(frame, matrix, (960,720))
 
         # Getting the position of the object, radius and tracking the object in the frame
         if args.debug:
