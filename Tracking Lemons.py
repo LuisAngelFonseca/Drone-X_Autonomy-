@@ -101,7 +101,6 @@ def procesing(frame):
         # find the largest contour in the mask, then use
         # it to compute the minimum enclosing circle and
         # centroid
-        found_something = True
         c = max(cnts, key=cv2.contourArea)
         ((x, y), radius) = cv2.minEnclosingCircle(c)
         M = cv2.moments(c)
@@ -115,7 +114,6 @@ def procesing(frame):
                        (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
     else:
-        found_something = False
         x = 480
         y = 360
         radius = 40
@@ -136,7 +134,7 @@ def procesing(frame):
         thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
         cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
-    return(x, y, radius, found_something, frame) # Return the position and radius of the object and also the frame
+    return(x, y, radius, frame) # Return the position and radius of the object and also the frame
 
 def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradius, tolerance):
     """Control velocities to track object"""
@@ -146,11 +144,11 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradiu
         if r < distanceradius + tolerance and r > distanceradius - tolerance:
             for_back_velocity = 0
     else:
-        left_right_velocity = int((480-x)*.125)
-        up_down_velocity = int((y-360)*.1666)
+        yaw_velocity = int((x-480)*.125)
+        up_down_velocity = int((360-y)*.1388888)
 
     # Send the velocities to drone
-    return left_right_velocity, up_down_velocity, for_back_velocity
+    return yaw_velocity, up_down_velocity, for_back_velocity
 
 
 # Setup
@@ -176,9 +174,9 @@ while True:
 
     frame_read = tello.get_frame_read()                  # Capture a frame from drone camera
     frame = np.array(frame_read.frame)                   # Frame turn into an array
-    x, y, r, found_something, video = procesing(frame)                    # Getting the position of the object, radius and tracking the object in the frame
-    x_1, x_2, y_1, y_2, video_2 = display_grid(video, 80, x, y) # Display grid in the actual frame, take video and radius of the object as arguments
-                                                         # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
+    x, y, r, video = procesing(frame)                    # Getting the position of the object, radius and tracking the object in the frame
+    x_1, x_2, y_1, y_2, video_2 = display_grid(video, 100, x, y)  # Display grid in the actual frame, take video and radius of the object as arguments
+                                                                  # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
 
     video_user = display_battery(display_text(video_2))  # Display battery and logo in the video
 
@@ -187,11 +185,10 @@ while True:
 
 
     if counter == 40:
-      #  tello.takeoff()               # Drone Takeoff
-        if found_something == True:
-          send_rc_control = True         # Turn on the rc control
+        tello.takeoff()               # Drone Takeoff
+        send_rc_control = True         # Turn on the rc control
 
-    left_right_velocity,up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1, y_2, r, 40, 5)
+    yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1, y_2, r, 40, 5)
 
     time.sleep(1/30)                  # Delay
     if send_rc_control:               # If true, we send 4 velocities to drone(each velocity can take de value from -100 to 100)
