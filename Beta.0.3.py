@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                     help='** = required')
 parser.add_argument('-D', "--debug", action='store_true',
-                    help='add the -D flag to enable debug mode. Everything works the same, but no commands will be sent to the drone')
+                    help='add the -D flag to enable debug HSV Mode, drone will act as a camera to improve HSV Calibration')
 
 args = parser.parse_args()
 
@@ -28,6 +28,39 @@ oSpeed = 1
 
 def callback(x):
     pass
+
+def stackImages(scale, imgArray):
+    rows = len(imgArray)
+    cols = len(imgArray[0])
+    rowsAvailable = isinstance(imgArray[0], list)
+    width = imgArray[0][0].shape[1]
+    height = imgArray[0][0].shape[0]
+    if rowsAvailable:
+        for x in range(0, rows):
+            for y in range(0, cols):
+                if imgArray[x][y].shape[:2] == imgArray[0][0].shape[:2]:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (0, 0), None, scale, scale)
+                else:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]),
+                                                None, scale, scale)
+                if len(imgArray[x][y].shape) == 2: imgArray[x][y] = cv2.cvtColor(imgArray[x][y], cv2.COLOR_GRAY2BGR)
+        imageBlank = np.zeros((height, width, 3), np.uint8)
+        hor = [imageBlank] * rows
+        hor_con = [imageBlank] * rows
+        for x in range(0, rows):
+            hor[x] = np.hstack(imgArray[x])
+        ver = np.vstack(hor)
+    else:
+        for x in range(0, rows):
+            if imgArray[x].shape[:2] == imgArray[0].shape[:2]:
+                imgArray[x] = cv2.resize(imgArray[x], (0, 0), None, scale, scale)
+            else:
+                imgArray[x] = cv2.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None, scale, scale)
+            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
+        hor = np.hstack(imgArray)
+        ver = hor
+    return ver
+
 
 def display_grid(frame, size, x, y):
     """Display grid on the video"""
@@ -108,12 +141,16 @@ def display_battery(img_equ):
     return img_equ
 
 
-def processing(frame):
+def processing(frame,lower_hsv, upper_hsv):
     """Track the color in the frame"""
 
-    # Color range of wanted object
-    color_lower = (90, 80, 55)
-    color_upper = (107, 251, 255)
+    if args.debug:
+        color_lower = lower_hsv
+        color_upper = upper_hsv
+    else:
+        # Color range of wanted object
+        color_lower = (90, 80, 55)
+        color_upper = (107, 251, 255)
 
     # blur it, and convert it to the HSV color space
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -190,13 +227,6 @@ tello.connect()
 # Send message to drone to start stream
 tello.streamon()
 
-# Restore values to 0, to clean past values
-left_right_velocity = 0
-for_back_velocity = 0
-up_down_velocity = 0
-yaw_velocity = 0
-speed = 10
-
 send_rc_control = False
 
 # Create a counter for the takeoff and activate rc control
@@ -210,6 +240,12 @@ tiempo_actual = int(time.time())
 tiempo_elapsed = int(time.time())
 
 while True:
+    # Restore values to 0, to clean past values
+    left_right_velocity = 0
+    for_back_velocity = 0
+    up_down_velocity = 0
+    yaw_velocity = 0
+    speed = 10
 
     if not tello.connect():
         print("Tello not connected")
@@ -227,6 +263,7 @@ while True:
     frame_read = tello.get_frame_read()
 
     # esta variable se encarga de decidir cuando corre el main verdadero y cuando no
+    #Lo que esta afuera del while true solo correra una vez
     Main_Real = False
     frameCount = 0
     # esta variable hace que puedas controlar al dron con la barra espaciadora
@@ -246,16 +283,16 @@ while True:
         ilowV = 0
         ihighV = 255
         # create trackbars for color change
-        cv2.namedWindow("Config")
+        cv2.namedWindow("Color Calibration")
         # HUE
-        cv2.createTrackbar('lowH', 'Config', ilowH, 179, callback)
-        cv2.createTrackbar('highH', 'Config', ihighH, 179, callback)
+        cv2.createTrackbar('Hue Min', 'Color Calibration', ilowH, 179, callback)
+        cv2.createTrackbar('Hue Max', 'Color Calibration', ihighH, 179, callback)
         # SATURATION
-        cv2.createTrackbar('lowS', 'Config', ilowS, 255, callback)
-        cv2.createTrackbar('highS', 'Config', ihighS, 255, callback)
+        cv2.createTrackbar('Sat Min', 'Color Calibration', ilowS, 255, callback)
+        cv2.createTrackbar('Sat Max', 'Color Calibration', ihighS, 255, callback)
 
-        cv2.createTrackbar('lowV', 'Config', ilowV, 255, callback)
-        cv2.createTrackbar('highV', 'Config', ihighV, 255, callback)
+        cv2.createTrackbar('Val Min', 'Color Calibration', ilowV, 255, callback)
+        cv2.createTrackbar('Val Max', 'Color Calibration', ihighV, 255, callback)
 
     # aqui van las cosas que irian en el main normal
     while not Main_Real:
@@ -272,30 +309,30 @@ while True:
         frame = frame_read.frame
 
         if args.debug:
-            ilowH = cv2.getTrackbarPos('lowH', 'Config')
-            ihighH = cv2.getTrackbarPos('highH', 'Config')
-            ilowS = cv2.getTrackbarPos('lowS', 'Config')
-            ihighS = cv2.getTrackbarPos('highS', 'Config')
-            ilowV = cv2.getTrackbarPos('lowV', 'Config')
-            ihighV = cv2.getTrackbarPos('highV', 'Config')
-            # Read frame
+            #Read all the trackbars positions
+            h_min = cv2.getTrackbarPos('Hue Min', 'Color Calibration')
+            h_max = cv2.getTrackbarPos('Hue Max', 'Color Calibration')
+            s_min = cv2.getTrackbarPos('Sat Min', 'Color Calibration')
+            s_max = cv2.getTrackbarPos('Sat Max', 'Color Calibration')
+            v_min = cv2.getTrackbarPos('Val Min', 'Color Calibration')
+            v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
+            # Apply a Gaussian Blur to the image in order to reduce detail
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+            #Create HSV image, passing it from bgr
+            frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-            hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-            # hsv = np.rot90(hsv)
-            cv2.imshow('hsv', hsv)
+            lower_hsv = np.array([h_min, s_min, v_min])
+            upper_hsv = np.array([h_max, s_max, v_max])
 
-            lower_hsv = np.array([ilowH, ilowS, ilowV])
-            higher_hsv = np.array([ihighH, ihighS, ihighV])
-
-            mask = cv2.inRange(hsv, lower_hsv, higher_hsv)
+            mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
             mask = cv2.erode(mask, None, iterations=5)
             mask = cv2.dilate(mask, None, iterations=5)
-            # mask = np.rot90(mask)
 
-            cv2.imshow('mask', mask)
-            # print(ilowH, ilowS, ilowV)
-            # print(ihighH, ihighS, ihighV)
+            frameResult = cv2.bitwise_and(frame, frame, mask=mask)
+
+            frameStack = stackImages(0.4, ([frame, frame_HSV], [mask, frameResult]))
+
+            cv2.imshow('Stacked Images', frameStack)
 
         # Delay to showcase desired fps in video
         time.sleep(1 / FPS)
@@ -373,7 +410,10 @@ while True:
             break
 
         # Getting the position of the object, radius and tracking the object in the frame
-        x, y, r, video = processing(frame)
+        if args.debug:
+            x, y, r, video = processing(frame,lower_hsv,upper_hsv)
+        else:
+            x, y, r, video = processing(frame,0,0)
 
         # Display grid in the actual frame, take video and radius of the object as arguments
         # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
