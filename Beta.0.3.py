@@ -21,7 +21,7 @@ parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
 parser.add_argument('-D', "--debug", action='store_true',
                     help='add the -D flag to enable debug HSV Mode, drone will act as a camera to improve HSV Calibration')
 parser.add_argument('-ss', "--save_session", action='store_true',
-    help='add the -ss flag to save your sessions in order to have your tello sesions recorded')
+                    help='add the -ss flag to save your sessions in order to have your tello sesions recorded')
 
 args = parser.parse_args()
 
@@ -30,8 +30,10 @@ S = 40
 # Factor de velocidad
 oSpeed = 1
 
+
 def callback(x):
     pass
+
 
 def stackImages(scale, imgArray):
     rows = len(imgArray)
@@ -70,8 +72,8 @@ def display_grid(frame, size, x, y):
     # Display each line of the dynamic grid
     x1 = int(480 - (size))
     x2 = int(480 + (size))
-    y1 = int(360 - (size*(3/4))-60)
-    y2 = int(360 + (size*(3/4))-60)
+    y1 = int(360 - (size * (3 / 4)) - 60)
+    y2 = int(360 + (size * (3 / 4)) - 60)
     cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
@@ -82,23 +84,25 @@ def display_grid(frame, size, x, y):
     cv2.line(frame, pt1=(int(x),int(y)), pt2=(480, int(y)), color=(0, 255, 0), thickness=2)
     cv2.line(frame, pt1=(int(x), int(y)), pt2=(int(x), 360), color=(0, 255, 0), thickness=2)
 
-    return x1, x2, y1, y2, frame # Return the position of each line and the frame
+    return x1, x2, y1, y2, frame  # Return the position of each line and the frame
 
-def display_text(img_equ):
+
+def display_text(frame_equ):
     """Display text in the video"""
     # Diplay text in the image
     font = cv2.FONT_ITALIC
 
-    cv2.putText(img_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
+    cv2.putText(frame_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
                 thickness=2, lineType=cv2.LINE_8)
 
-    return img_equ  # Return the frame with the text
+    return frame_equ  # Return the frame with the text
 
-def display_battery(img_equ):
+
+def display_battery(frame_equ):
     """Display a battery in the video that indicate the percentage of battery"""
     # Display a battery in the image
-    cv2.rectangle(img_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness=2)
-    cv2.rectangle(img_equ, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
+    cv2.rectangle(frame_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness=2)
+    cv2.rectangle(frame_equ, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
 
     global tiempo_elapsed, tiempo_actual, battery
 
@@ -131,18 +135,18 @@ def display_battery(img_equ):
 
     # Display a complete battery
     if battery > 75:
-        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 0), thickness=-1)
-        cv2.rectangle(img_equ, pt1=(932, 9), pt2=(938, 21), color=(0, 255, 0), thickness=-1)
-        cv2.rectangle(img_equ, pt1=(940, 9), pt2=(947, 21), color=(0, 255, 0), thickness=-1)
+        cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 0), thickness=-1)
+        cv2.rectangle(frame_equ, pt1=(932, 9), pt2=(938, 21), color=(0, 255, 0), thickness=-1)
+        cv2.rectangle(frame_equ, pt1=(940, 9), pt2=(947, 21), color=(0, 255, 0), thickness=-1)
     # Display a 2/3 of the battery
     elif battery < 75 and battery > 50:
-        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 255), thickness=-1)
-        cv2.rectangle(img_equ, pt1=(932, 9), pt2=(940, 21), color=(0, 255, 255), thickness=-1)
+        cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 255), thickness=-1)
+        cv2.rectangle(frame_equ, pt1=(932, 9), pt2=(940, 21), color=(0, 255, 255), thickness=-1)
     # Display 1/3 of the battery
     elif battery < 50 and battery > 25:
-        cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
+        cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
-    return img_equ
+    return frame_equ
 
 def processing(frame, lower_hsv, upper_hsv):
     """Track the color in the frame"""
@@ -208,7 +212,8 @@ def processing(frame, lower_hsv, upper_hsv):
 
     return x, y, radius, detection, frame  # Return the position and radius of the object and also the frame
 
-def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradius, tolerance):
+
+def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius, tolerance):
     """Control velocities to track object"""
     global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity, bus_stop
 
@@ -219,8 +224,8 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradiu
             for_back_velocity = 0
             bus_stop = True
     else:
-        yaw_velocity = int((x-480)*.125)
-        up_down_velocity = int((360-y)*.1388888)
+        yaw_velocity = int((x - 480) * .125)
+        up_down_velocity = int((360 - y) * .1388888)
         for_back_velocity = 0
         bus_stop = False
 
@@ -237,12 +242,6 @@ def drone_microbusero(rmin, rmax, stops):
 # Setup
 # Create an instance of Drone Tello
 tello = Tello()
-
-# Connect to Drone
-tello.connect()
-
-# Send message to drone to start stream
-tello.streamon()
 
 send_rc_control = False
 
@@ -287,13 +286,15 @@ while True:
     # Capture a frame from drone camera
     frame_read = tello.get_frame_read()
 
+    frame_original = frame_read.frame
+
     # esta variable se encarga de decidir cuando corre el main verdadero y cuando no
-    #Lo que esta afuera del while true solo correra una vez
+    # Lo que esta afuera del while true solo correra una vez
     Ciclo_Dron = False
-    frame_Count = 0
+    frame_count = 0
     # esta variable hace que puedas controlar al dron con la barra espaciadora
     OVERRIDE = False
-    #check tello battery
+    # check tello battery
     tello.get_battery()
 
     # This checks if we are in the debug mode,
@@ -318,26 +319,21 @@ while True:
 
     if args.save_session:
 
-    # If we are to save our sessions, we need to make sure the proper directories exist
+        # If we are to save our sessions, we need to make sure the proper directories exist
         ddir = "Sessions"
 
         if not os.path.isdir(ddir):
-                os.mkdir(ddir)
+            os.mkdir(ddir)
         ddir = "Sessions/Session {}".format(str(datetime.datetime.now()).replace(':', '-').replace('.', '_'))
         os.mkdir(ddir)
 
-        cap = frame_read.frame
+        width = frame_original.shape[1]
+        height = frame_original.shape[0]
 
-        width = cap.shape[1]
-        height = cap.shape[0]
-
-        print(width,height)
-        print(cap.shape)
-
-        writer = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
-                                 30, (width, height))  # con esta wea se guardan videos
-        writer_proccesed = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
-                                 30, (width, height))  # con esta wea se guardan videos
+        writer = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
+                                 FPS, (width, height))  # con esta wea se guardan videos
+        writer_proccesed = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
+                                           FPS, (width, height))  # con esta wea se guardan videos
 
     # aqui van las cosas que irian en el main normal
     while not Ciclo_Dron:
@@ -351,12 +347,13 @@ while True:
             break
 
         # Frame read
-        frame = frame_read.frame
+        frame_original = frame_read.frame
+        frame = frame_original.copy()
 
-        frame_Count += 1
+        frame_count += 1
 
         if args.debug:
-            #Read all the trackbars positions
+            # Read all the trackbars positions
             h_min = cv2.getTrackbarPos('Hue Min', 'Color Calibration')
             h_max = cv2.getTrackbarPos('Hue Max', 'Color Calibration')
             s_min = cv2.getTrackbarPos('Sat Min', 'Color Calibration')
@@ -367,7 +364,7 @@ while True:
             dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
             # Apply a Gaussian Blur to the image in order to reduce detail
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-            #Create HSV image, passing it from BGR
+            # Create HSV image, passing it from BGR
             frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
             lower_hsv: ndarray = np.array([h_min, s_min, v_min])
@@ -458,10 +455,10 @@ while True:
             Main_Real = True
             break
 
-        pts1 = np.float32([[140, 0],[820, 0],[0, 666],[960,660]])
-        pts2 = np.float32([[0, 0], [960, 0], [0,720], [960, 720]])
+        pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
+        pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
-        frame = cv2.warpPerspective(frame, matrix, (960,720))
+        frame = cv2.warpPerspective(frame, matrix, (960, 720))
 
         # Getting the position of the object, radius and tracking the object in the frame
         if args.debug:
@@ -479,7 +476,6 @@ while True:
         if send_rc_control and not OVERRIDE:
 
             if not args.debug:
-
                 left_right_velocity = 0
                 for_back_velocity = 0
                 up_down_velocity = 0
@@ -507,8 +503,7 @@ while True:
         cv2.imshow('Drone X', video_user)
 
         if args.save_session:
-
-            writer.write(frame)
+            writer.write(frame_original)
             writer_proccesed.write(video_user)
 
     break
