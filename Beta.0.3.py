@@ -6,6 +6,7 @@ import time
 import argparse
 import imutils
 import math
+from numpy.core.multiarray import ndarray
 
 """
 Esta parte esta encargada de los argumetnos que se brindan cuando corres este script desde la linea de comando
@@ -61,7 +62,6 @@ def stackImages(scale, imgArray):
         ver = hor
     return ver
 
-
 def display_grid(frame, size, x, y):
     """Display grid on the video"""
     # Display each line of the dynamic grid
@@ -73,11 +73,13 @@ def display_grid(frame, size, x, y):
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y2), pt2=(960, y2), color=(255, 0, 0), thickness=2)
+    if x == None or y == None:
+        x = 480
+        y = 360
     cv2.line(frame, pt1=(int(x),int(y)), pt2=(480, int(y)), color=(0, 255, 0), thickness=2)
     cv2.line(frame, pt1=(int(x), int(y)), pt2=(int(x), 360), color=(0, 255, 0), thickness=2)
 
     return x1, x2, y1, y2, frame # Return the position of each line and the frame
-
 
 def display_text(img_equ):
     """Display text in the video"""
@@ -88,7 +90,6 @@ def display_text(img_equ):
                 thickness=2, lineType=cv2.LINE_8)
 
     return img_equ  # Return the frame with the text
-
 
 def display_battery(img_equ):
     """Display a battery in the video that indicate the percentage of battery"""
@@ -139,7 +140,6 @@ def display_battery(img_equ):
         cv2.rectangle(img_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
 
     return img_equ
-
 
 def processing(frame, lower_hsv, upper_hsv):
     """Track the color in the frame"""
@@ -195,27 +195,41 @@ def processing(frame, lower_hsv, upper_hsv):
             # draw the circle and centroid on the frame
             cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
-    else:
-        x = 480
-        y = 360
-        radius = 40
 
-    return x, y, radius, frame  # Return the position and radius of the object and also the frame
+        detection = True
+    else:
+        detection = False
+        x = None
+        y = None
+        radius = None
+
+    return x, y, radius, detection, frame  # Return the position and radius of the object and also the frame
 
 def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r,  distanceradius, tolerance):
     """Control velocities to track object"""
-    global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity
+    global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity, bus_stop
+
     if x < limitx2 and x > limitx1 and y < limity2 and y > limity1:
-        for_back_velocity = int((distanceradius - r) * 1.33333)
+        for_back_velocity = int((distanceradius - r) *.25)
+        bus_stop = False
         if r < distanceradius + tolerance and r > distanceradius - tolerance:
             for_back_velocity = 0
+            bus_stop = True
     else:
         yaw_velocity = int((x-480)*.125)
         up_down_velocity = int((360-y)*.1388888)
         for_back_velocity = 0
+        bus_stop = False
 
     # Send the velocities to drone
-    return yaw_velocity, up_down_velocity, for_back_velocity
+    return yaw_velocity, up_down_velocity, for_back_velocity, bus_stop
+
+def drone_microbusero(rmin, rmax, stops):
+    list_stops = []
+    for stop in range(stops+1):
+        list_stops.append((((rmax-rmin)/stops)*stop)+rmin)
+    return (list_stops)
+
 
 # Setup
 # Create an instance of Drone Tello
@@ -231,6 +245,7 @@ send_rc_control = False
 
 # Create a counter for the takeoff and activate rc control
 counter = 0
+counter_stop = 0
 
 # Frames per second
 FPS = 25
@@ -239,6 +254,13 @@ FPS = 25
 tiempo_actual = int(time.time())
 tiempo_elapsed = int(time.time())
 
+#
+init_time = int(time.time())
+turn_time = 0
+
+stop_value = drone_microbusero(185,250,3)
+stop = stop_value[1]
+i = 1
 while True:
     # Restore values to 0, to clean past values
     left_right_velocity = 0
@@ -263,7 +285,7 @@ while True:
     frame_read = tello.get_frame_read()
 
     # esta variable se encarga de decidir cuando corre el main verdadero y cuando no
-    #Lo que esta afuera del while true solo correra una vez
+    # Lo que esta afuera del while true solo correra una vez
     Main_Real = False
     frameCount = 0
     # esta variable hace que puedas controlar al dron con la barra espaciadora
@@ -320,7 +342,7 @@ while True:
             #Create HSV image, passing it from BGR
             frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-            lower_hsv = np.array([h_min, s_min, v_min])
+            lower_hsv: ndarray = np.array([h_min, s_min, v_min])
             upper_hsv = np.array([h_max, s_max, v_max])
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
@@ -415,9 +437,9 @@ while True:
 
         # Getting the position of the object, radius and tracking the object in the frame
         if args.debug:
-            x, y, r, video = processing(frame,lower_hsv,upper_hsv)
+            x, y, r, detection, video = processing(frame,lower_hsv,upper_hsv)
         else:
-            x, y, r, video = processing(frame,0,0)
+            x, y, r, detection, video = processing(frame,0,0)
 
         # Display grid in the actual frame, take video and radius of the object as arguments
         # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
@@ -435,12 +457,22 @@ while True:
                 up_down_velocity = 0
                 yaw_velocity = 0
 
-                yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1, y_2, r, 40, 5)
+                if detection:
+                    yaw_velocity, up_down_velocity, for_back_velocity, bus_stop = drone_stay_close(x, y, x_1, x_2, y_1, y_2, r, stop, 5)
+                    print(f"x = {x} y = {y} r = {r}")
+                    if bus_stop:
+                        counter_stop = counter_stop + 1
+                        print(f"counter = {counter} counter stop = {counter_stop} stop = {stop}")
+                if counter_stop > 20:
+                    i += 1
+                    if i < len(stop_value) - 1:
+                        stop = stop_value[i]
+                    counter_stop = 0
+                    bus_stop = False
+                    print(f"counter = {counter} counter stop = {counter_stop} r stop = {stop} bus = {bus_stop}")
 
                 # Display information to the user
-                print(f"x = {x} y = {y} r = {r}")
                 print(f"counter = {counter}")
-
         # Update counter
         counter = counter + 1
         # Display the video
