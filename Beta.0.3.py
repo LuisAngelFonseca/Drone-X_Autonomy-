@@ -6,7 +6,8 @@ import time
 import argparse
 import imutils
 import math
-
+import os
+import datetime
 """
 Esta parte esta encargada de los argumetnos que se brindan cuando corres este script desde la linea de comando
 al agregarle el -D se corre en version de debugeo donde se pueden cambiar los valores de hsv de acorde a la camara
@@ -17,6 +18,8 @@ parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                     help='** = required')
 parser.add_argument('-D', "--debug", action='store_true',
                     help='add the -D flag to enable debug HSV Mode, drone will act as a camera to improve HSV Calibration')
+parser.add_argument('-ss', "--save_session", action='store_true',
+    help='add the -ss flag to save your sessions in order to have your tello sesions recorded')
 
 args = parser.parse_args()
 
@@ -24,7 +27,6 @@ args = parser.parse_args()
 S = 40
 # Factor de velocidad
 oSpeed = 1
-
 
 def callback(x):
     pass
@@ -264,8 +266,8 @@ while True:
 
     # esta variable se encarga de decidir cuando corre el main verdadero y cuando no
     #Lo que esta afuera del while true solo correra una vez
-    Main_Real = False
-    frameCount = 0
+    Ciclo_Dron = False
+    frame_Count = 0
     # esta variable hace que puedas controlar al dron con la barra espaciadora
     OVERRIDE = False
     #check tello battery
@@ -291,8 +293,31 @@ while True:
         cv2.createTrackbar('Erosion', 'Color Calibration', 0, 30, callback)
         cv2.createTrackbar('Dilation', 'Color Calibration', 0, 30, callback)
 
+    if args.save_session:
+
+    # If we are to save our sessions, we need to make sure the proper directories exist
+        ddir = "Sessions"
+
+        if not os.path.isdir(ddir):
+                os.mkdir(ddir)
+        ddir = "Sessions/Session {}".format(str(datetime.datetime.now()).replace(':', '-').replace('.', '_'))
+        os.mkdir(ddir)
+
+        cap = frame_read.frame
+
+        width = cap.shape[1]
+        height = cap.shape[0]
+
+        print(width,height)
+        print(cap.shape)
+
+        writer = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
+                                 30, (width, height))  # con esta wea se guardan videos
+        writer_proccesed = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
+                                 30, (width, height))  # con esta wea se guardan videos
+
     # aqui van las cosas que irian en el main normal
-    while not Main_Real:
+    while not Ciclo_Dron:
 
         # Function that updates dron speeds
         if send_rc_control:
@@ -304,6 +329,8 @@ while True:
 
         # Frame read
         frame = frame_read.frame
+
+        frame_Count += 1
 
         if args.debug:
             #Read all the trackbars positions
@@ -445,6 +472,12 @@ while True:
         counter = counter + 1
         # Display the video
         cv2.imshow('Drone X', video_user)
+
+        if args.save_session:
+
+            writer.write(frame)
+            writer_proccesed.write(video_user)
+
     break
 
 cv2.destroyAllWindows()

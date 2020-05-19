@@ -72,8 +72,8 @@ def procesing(frame):
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
     # Lemmons color range
-    greenLower = (29, 86, 6)
-    greenUpper = (64, 255, 255)
+    greenLower = (1, 51, 0)
+    greenUpper = (11, 255, 255)
 
     # (29, 86, 6)
     # (64, 255, 255)
@@ -86,8 +86,8 @@ def procesing(frame):
     # a series of dilations and erosions to remove any small
     # blobs left in the mask
     mask = cv2.inRange(hsv, greenLower, greenUpper)
-    mask = cv2.erode(mask, None, iterations=2)
-    mask = cv2.dilate(mask, None, iterations=2)
+    mask = cv2.erode(mask, None, iterations=5)
+    mask = cv2.dilate(mask, None, iterations=5)
 
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
