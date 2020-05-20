@@ -67,6 +67,7 @@ def stackImages(scale, imgArray):
         ver = hor
     return ver
 
+
 def display_grid(frame, size, x, y):
     """Display grid on the video"""
     # Display each line of the dynamic grid
@@ -81,7 +82,7 @@ def display_grid(frame, size, x, y):
     if x == None or y == None:
         x = 480
         y = 360
-    cv2.line(frame, pt1=(int(x),int(y)), pt2=(480, int(y)), color=(0, 255, 0), thickness=2)
+    cv2.line(frame, pt1=(int(x), int(y)), pt2=(480, int(y)), color=(0, 255, 0), thickness=2)
     cv2.line(frame, pt1=(int(x), int(y)), pt2=(int(x), 360), color=(0, 255, 0), thickness=2)
 
     return x1, x2, y1, y2, frame  # Return the position of each line and the frame
@@ -148,6 +149,7 @@ def display_battery(frame_equ):
 
     return frame_equ
 
+
 def processing(frame, lower_hsv, upper_hsv):
     """Track the color in the frame"""
 
@@ -156,8 +158,8 @@ def processing(frame, lower_hsv, upper_hsv):
         color_upper = upper_hsv
     else:
         # Color range of wanted object
-        color_lower = (90, 80, 55)
-        color_upper = (107, 251, 255)
+        color_lower = (76, 96, 0)
+        color_upper = (129, 255, 255)
 
     # blur it, and convert it to the HSV color space
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -167,16 +169,16 @@ def processing(frame, lower_hsv, upper_hsv):
     # a series of dilations and erosions to remove any small
     # blobs left in the mask
     mask = cv2.inRange(frameHSV, color_lower, color_upper)
-    mask = cv2.erode(mask, None, iterations=2)
-    mask = cv2.dilate(mask, None, iterations=2)
+    mask = cv2.erode(mask, None, iterations=1)
+    mask = cv2.dilate(mask, None, iterations=5)
 
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
     contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = imutils.grab_contours(contours)
-    center = None
 
     contours_circles = []
+    center = None
 
     # only proceed if at least one contour was found
     if len(contours) > 0:
@@ -195,15 +197,14 @@ def processing(frame, lower_hsv, upper_hsv):
         radius = cv2.minEnclosingCircle(max_contour)[1]
         M = cv2.moments(max_contour)
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-        x, y = center
 
         # only proceed if the radius meets a minimum size
-        if radius > 15:
+        if radius > 5:
             # draw the circle and centroid on the frame
             cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
-
-        detection = True
+            x, y = center
+            detection = True
     else:
         detection = False
         x = None
@@ -218,7 +219,7 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius
     global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity, bus_stop
 
     if x < limitx2 and x > limitx1 and y < limity2 and y > limity1:
-        for_back_velocity = int((distanceradius - r) *.25)
+        for_back_velocity = int((distanceradius - r) * .25)
         bus_stop = False
         if r < distanceradius + tolerance and r > distanceradius - tolerance:
             for_back_velocity = 0
@@ -232,10 +233,11 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius
     # Send the velocities to drone
     return yaw_velocity, up_down_velocity, for_back_velocity, bus_stop
 
+
 def drone_microbusero(rmin, rmax, stops):
     list_stops = []
-    for stop in range(stops+1):
-        list_stops.append((((rmax-rmin)/stops)*stop)+rmin)
+    for stop in range(stops + 1):
+        list_stops.append((((rmax - rmin) / stops) * stop) + rmin)
     return (list_stops)
 
 
@@ -251,6 +253,7 @@ counter_stop = 0
 
 # Frames per second
 FPS = 25
+FPS_vid = 10
 
 # Create 2 variables that count time
 tiempo_actual = int(time.time())
@@ -260,9 +263,10 @@ tiempo_elapsed = int(time.time())
 init_time = int(time.time())
 turn_time = 0
 
-stop_value = drone_microbusero(185,250,3)
-stop = stop_value[1]
-i = 1
+stop_value = drone_microbusero(13, 48, 3)
+stop = 1
+stops_list = stop_value[stop]
+
 while True:
     # Restore values to 0, to clean past values
     left_right_velocity = 0
@@ -331,9 +335,9 @@ while True:
         height = frame_original.shape[0]
 
         writer = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
-                                 FPS, (width, height))  # con esta wea se guardan videos
+                                 FPS_vid, (width, height))  # con esta wea se guardan videos
         writer_proccesed = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
-                                           FPS, (width, height))  # con esta wea se guardan videos
+                                           FPS_vid, (width, height))  # con esta wea se guardan videos
 
     # aqui van las cosas que irian en el main normal
     while not Ciclo_Dron:
@@ -462,16 +466,16 @@ while True:
 
         # Getting the position of the object, radius and tracking the object in the frame
         if args.debug:
-            x, y, r, detection, video = processing(frame,lower_hsv,upper_hsv)
+            x, y, r, detection, frame_processed = processing(frame, lower_hsv, upper_hsv)
         else:
-            x, y, r, detection, video = processing(frame,0,0)
+            x, y, r, detection, frame_processed = processing(frame, 0, 0)
 
         # Display grid in the actual frame, take video and radius of the object as arguments
         # return the grid dynamic position first line passing through  x_1 ..... last line trough y_2
-        x_1, x_2, y_1, y_2, video_2 = display_grid(video, 100, x, y)
+        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, 100, x, y)
 
         # display battery and logo in the video
-        video_user = display_battery(display_text(video_2))
+        frame_user = display_battery(display_text(frame_grid))
 
         if send_rc_control and not OVERRIDE:
 
@@ -482,29 +486,30 @@ while True:
                 yaw_velocity = 0
 
                 if detection:
-                    yaw_velocity, up_down_velocity, for_back_velocity, bus_stop = drone_stay_close(x, y, x_1, x_2, y_1, y_2, r, stop, 5)
+                    yaw_velocity, up_down_velocity, for_back_velocity, bus_stop = drone_stay_close(x, y, x_1, x_2, y_1,
+                                                                                                   y_2, r, stops_list, 5)
                     print(f"x = {x} y = {y} r = {r}")
                     if bus_stop:
                         counter_stop = counter_stop + 1
-                        print(f"counter = {counter} counter stop = {counter_stop} stop = {stop}")
+                        print(f"counter = {counter} counter stop = {counter_stop} stop = {stops_list}")
                 if counter_stop > 20:
-                    i += 1
-                    if i < len(stop_value) - 1:
-                        stop = stop_value[i]
+                    stop += 1
+                    if stop < len(stop_value) - 1:
+                        stops_list = stop_value[stop]
                     counter_stop = 0
                     bus_stop = False
-                    print(f"counter = {counter} counter stop = {counter_stop} r stop = {stop} bus = {bus_stop}")
+                    print(f"counter = {counter} counter stop = {counter_stop} r stop = {stops_list} bus = {bus_stop}")
 
                 # Display information to the user
                 print(f"counter = {counter}")
         # Update counter
         counter = counter + 1
         # Display the video
-        cv2.imshow('Drone X', video_user)
+        cv2.imshow('Drone X', frame_user)
 
         if args.save_session:
             writer.write(frame_original)
-            writer_proccesed.write(video_user)
+            writer_proccesed.write(frame_user)
 
     break
 
