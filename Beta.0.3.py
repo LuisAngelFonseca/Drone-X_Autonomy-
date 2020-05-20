@@ -219,7 +219,7 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius
     global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity, bus_stop
 
     if x < limitx2 and x > limitx1 and y < limity2 and y > limity1:
-        for_back_velocity = int((distanceradius - r) * .25)
+        for_back_velocity = int((distanceradius - r) * 1.3333)
         bus_stop = False
         if r < distanceradius + tolerance and r > distanceradius - tolerance:
             for_back_velocity = 0
