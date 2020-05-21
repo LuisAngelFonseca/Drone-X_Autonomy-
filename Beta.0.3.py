@@ -216,30 +216,19 @@ def processing(frame, lower_hsv, upper_hsv):
 
 def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius, tolerance):
     """Control velocities to track object"""
-    global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity, bus_stop
+    global left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity
 
     if x < limitx2 and x > limitx1 and y < limity2 and y > limity1:
         for_back_velocity = int((distanceradius - r) * 1.3333)
-        bus_stop = False
         if r < distanceradius + tolerance and r > distanceradius - tolerance:
             for_back_velocity = 0
-            bus_stop = True
     else:
         yaw_velocity = int((x - 480) * .125)
         up_down_velocity = int((360 - y) * .1388888)
         for_back_velocity = 0
-        bus_stop = False
 
     # Send the velocities to drone
-    return yaw_velocity, up_down_velocity, for_back_velocity, bus_stop
-
-
-def drone_microbusero(rmin, rmax, stops):
-    list_stops = []
-    for stop in range(stops + 1):
-        list_stops.append((((rmax - rmin) / stops) * stop) + rmin)
-    return (list_stops)
-
+    return yaw_velocity, up_down_velocity, for_back_velocity
 
 # Setup
 # Create an instance of Drone Tello
@@ -249,7 +238,6 @@ send_rc_control = False
 
 # Create a counter for the takeoff and activate rc control
 counter = 0
-counter_stop = 0
 
 # Frames per second
 FPS = 25
@@ -262,10 +250,6 @@ tiempo_elapsed = int(time.time())
 #
 init_time = int(time.time())
 turn_time = 0
-
-stop_value = drone_microbusero(13, 48, 3)
-stop = 1
-stops_list = stop_value[stop]
 
 while True:
     # Restore values to 0, to clean past values
@@ -486,22 +470,10 @@ while True:
                 yaw_velocity = 0
 
                 if detection:
-                    yaw_velocity, up_down_velocity, for_back_velocity, bus_stop = drone_stay_close(x, y, x_1, x_2, y_1,
-                                                                                                   y_2, r, stops_list, 5)
-                    print(f"x = {x} y = {y} r = {r}")
-                    if bus_stop:
-                        counter_stop = counter_stop + 1
-                        print(f"counter = {counter} counter stop = {counter_stop} stop = {stops_list}")
-                if counter_stop > 20:
-                    stop += 1
-                    if stop < len(stop_value) - 1:
-                        stops_list = stop_value[stop]
-                    counter_stop = 0
-                    bus_stop = False
-                    print(f"counter = {counter} counter stop = {counter_stop} r stop = {stops_list} bus = {bus_stop}")
-
-                # Display information to the user
-                print(f"counter = {counter}")
+                    yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
+                                                                                                   y_2, r, 40, 5)
+            # Display information to the user
+            print(f"counter = {counter}")
         # Update counter
         counter = counter + 1
         # Display the video

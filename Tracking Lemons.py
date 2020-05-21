@@ -72,8 +72,8 @@ def procesing(frame):
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
     # Lemmons color range
-    greenLower = (1, 51, 0)
-    greenUpper = (11, 255, 255)
+    greenLower = (29, 86, 6)
+    greenUpper = (64, 255, 255)
 
     # (29, 86, 6)
     # (64, 255, 255)
