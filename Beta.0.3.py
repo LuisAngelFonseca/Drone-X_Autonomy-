@@ -141,65 +141,77 @@ def display_battery(frame_equ):
 def object_detection(frame, lower_hsv, upper_hsv):
     """ Track the color in the frame """
 
+    # If mode debug is active, make lower and upper parameters
+    # be the ones from the trackbars
     if args.debug:
         color_lower = lower_hsv
         color_upper = upper_hsv
+
+    # Else, use the lower and upper hardcoded parameters
     else:
         # Color range of wanted object
-        color_lower = (76, 96, 0)
-        color_upper = (129, 255, 255)
+        color_lower = (90, 80, 55)
+        color_upper = (107, 251, 255)
+        # color_lower = (76, 96, 0)
+        # color_upper = (129, 255, 255)
 
-    # blur it, and convert it to the HSV color space
+    # Blur frame, and convert it to the HSV color space
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
     frameHSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-    # construct a mask for the color, then perform
+    # Construct a mask for the color, then perform
     # a series of dilations and erosions to remove any small
     # blobs left in the mask
     mask = cv2.inRange(frameHSV, color_lower, color_upper)
     mask = cv2.erode(mask, None, iterations=1)
     mask = cv2.dilate(mask, None, iterations=5)
 
-    # find contours in the mask and initialize the current
-    # (x, y) center of the ball
+    # Find contours in the mask
     contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = imutils.grab_contours(contours)
 
-    contours_circles = []
-    center = None
+    # Initialize variables
+    contours_circles = []  # Will contain contours with circularity
+    center = None  # Will contain x and y coordinates of objects
 
-    # only proceed if at least one contour was found
+    # Only proceed if at least one contour was found
     if len(contours) > 0:
+        # Go through every contour and check circularity,
+        # if it falls between the range, append it
         for contour in contours:
             perimeter = cv2.arcLength(contour, True)
             area = cv2.contourArea(contour)
-            circularity = 4 * math.pi * (area / (perimeter * perimeter))
+            circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
             if 0.85 < circularity < 1.05:
                 contours_circles.append(contour)
 
+    # Only proceed if at least one contour with circularity was found
     if len(contours_circles) > 0:
         # find the largest contour in the mask, then use
-        # it to compute the minimum enclosing circle and
-        # centroid
+        # it to compute the radius and centroid
         max_contour = max(contours_circles, key=cv2.contourArea)
         radius = cv2.minEnclosingCircle(max_contour)[1]
         M = cv2.moments(max_contour)
-        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
-        # only proceed if the radius meets a minimum size
+        # Check if the computed radius meets a minimum size
         if radius > 5:
+            # Object has been detected!, get center coordinates,
+            # and draw a circle in the frame to visualize detection
+            detection = True
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+            x, y = center
             # draw the circle and centroid on the frame
             cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
-            x, y = center
-            detection = True
+
+    #  No object has been detected
     else:
         detection = False
         x = None
         y = None
         radius = None
 
-    return x, y, radius, detection, frame  # Return the position and radius of the object and also the frame
+    return x, y, radius, detection, frame  # Return the position, radius of the object, and the frame
 
 def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius, tolerance):
     """
@@ -224,6 +236,7 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius
 
     # Send the velocities to drone
     return yaw_velocity, up_down_velocity, for_back_velocity
+
 
 # Setup
 # Create an instance of a Drone from the Tello library
