@@ -71,7 +71,7 @@ def display_grid(frame, size, x, y):
     cv2.line(frame, pt1=(0, y2), pt2=(960, y2), color=(255, 0, 0), thickness=2)
     if x == None or y == None:
         x = 480
-        y = 360
+        y = 375
     # This part draw two lines from the center to the target
     cv2.line(frame, pt1=(int(x), int(y)), pt2=(480, int(y)), color=(0, 255, 0), thickness=2)
     cv2.line(frame, pt1=(int(x), int(y)), pt2=(int(x), 360), color=(0, 255, 0), thickness=2)
@@ -231,7 +231,7 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius
     # Drone move to get the target centered
     else:
         yaw_velocity = int((x - 480) * .125)
-        up_down_velocity = int((360 - y) * .1388888)
+        up_down_velocity = int((375 - y) * .1388888)
         for_back_velocity = 0
 
     # Send the velocities to drone
