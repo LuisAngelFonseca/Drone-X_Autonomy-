@@ -71,10 +71,10 @@ def display_grid(frame, size, x, y):
     cv2.line(frame, pt1=(0, y2), pt2=(960, y2), color=(255, 0, 0), thickness=2)
     if x == None or y == None:
         x = 480
-        y = 375
+        y = 300
     # This part draw two lines from the center to the target
     cv2.line(frame, pt1=(int(x), int(y)), pt2=(480, int(y)), color=(0, 255, 0), thickness=2)
-    cv2.line(frame, pt1=(int(x), int(y)), pt2=(int(x), 360), color=(0, 255, 0), thickness=2)
+    cv2.line(frame, pt1=(int(x), int(y)), pt2=(int(x), 300), color=(0, 255, 0), thickness=2)
 
     return x1, x2, y1, y2, frame  # Return the position of each line and the frame
 
@@ -85,6 +85,19 @@ def display_text(frame_equ):
 
     cv2.putText(frame_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
                 thickness=2, lineType=cv2.LINE_8)
+
+    return frame_equ  # Return the frame with the text
+
+def display_override_text(frame_equ):
+    """ Display text in the video """
+    global tiempo_actual, tiempo_elapsed
+    # Diplay text in the image
+    font = cv2.FONT_ITALIC
+    if tiempo_actual - tiempo_elapsed > 2:
+        cv2.putText(frame_equ, text='Override mode: on', org=(150, 20), fontFace=font, fontScale=.7, color=(0, 0, 255),
+                 thickness=1, lineType=cv2.LINE_8)
+    else:
+        tiempo_actual = int(time.time())
 
     return frame_equ  # Return the frame with the text
 
@@ -231,7 +244,7 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius
     # Drone move to get the target centered
     else:
         yaw_velocity = int((x - 480) * .125)
-        up_down_velocity = int((375 - y) * .1388888)
+        up_down_velocity = int((300 - y) * .1388888)
         for_back_velocity = 0
 
     # Send the velocities to drone
@@ -419,6 +432,7 @@ while True:
                 print("OVERRIDE DISABLED")
 
         if OVERRIDE:
+            frame = display_override_text(frame)
             # W to fly forward and S to fly back 
             if k == ord('w'):
                 for_back_velocity = int(S * oSpeed)
