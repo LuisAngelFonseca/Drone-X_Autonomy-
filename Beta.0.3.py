@@ -244,7 +244,7 @@ def drone_stay_close(x, y, limitx1, limitx2, limity1, limity2, r, distanceradius
     # Drone move to get the target centered
     else:
         yaw_velocity = int((x - 480) * .125)
-        up_down_velocity = int((300 - y) * .1388888)
+        up_down_velocity = int((300 - y) * .2)
         for_back_velocity = 0
 
     # Send the velocities to drone
