@@ -96,6 +96,7 @@ def display_override_text(frame_equ):
     global actual_time, elapsed_time
     # Diplay text in the image
     font = cv2.FONT_HERSHEY_COMPLEX
+    # This is to make the text blink
     if actual_time - elapsed_time > 2:
         cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(150, 20), fontFace=font, fontScale=.7, color=(0, 0, 255),
                     thickness=1, lineType=cv2.LINE_8)
