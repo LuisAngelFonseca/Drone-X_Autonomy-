@@ -93,7 +93,7 @@ def display_text(frame_equ):
 
 def display_override_text(frame_equ):
     """ Display Override text in the left upper part of video """
-    global actual_override_blink, elapsed_override_blink
+    global actual_time, elapsed_override_blink
 
     # Diplay text in the image
     font = cv2.FONT_HERSHEY_COMPLEX
@@ -114,7 +114,7 @@ def display_battery(frame_equ):
     cv2.rectangle(frame_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness=2)
     cv2.rectangle(frame_equ, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
 
-    global elapsed_time, actual_time, battery, actual_battery_blink, elapsed_battery_blink
+    global elapsed_time, actual_time, battery, elapsed_battery_blink
 
     # Request battery every 15 seconds in autonomous mode
     if not args.debug:
@@ -129,8 +129,6 @@ def display_battery(frame_equ):
                     pass
             except:
                 battery = 0
-        else:
-            actual_time = int(time.time())
 
     # Request battery every 24 seconds in debug mode
     elif args.debug:
@@ -145,8 +143,6 @@ def display_battery(frame_equ):
                     pass
             except:
                 battery = 0
-        else:
-            actual_time = int(time.time())
 
     # Display a complete battery
     if battery > 75:
@@ -162,11 +158,9 @@ def display_battery(frame_equ):
         cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
     # Display 1/3 of the battery blinking
     elif battery < 25:
-        if actual_battery_blink - elapsed_battery_blink > 1:
+        if actual_time - elapsed_battery_blink > 1:
             cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
-            elapsed_battery_blink = actual_battery_blink
-        else:
-            actual_battery_blink = int(time.time())
+            elapsed_battery_blink = actual_time
 
     return frame_equ
 
@@ -300,15 +294,13 @@ radius_stop = 40
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
-# Create variables that count time to solicit battery
+# Create variables that counts time
 actual_time = int(time.time())
 elapsed_time = actual_time
 # Create variables that count time to blink override text
-actual_override_blink = int(time.time())
-elapsed_override_blink = actual_override_blink
+elapsed_override_blink = actual_time
 # Create variables that count time to blink battery when low
-actual_battery_blink = int(time.time())
-elapsed_battery_blink = actual_battery_blink
+elapsed_battery_blink = actual_time
 
 # Main Loop
 while True:
@@ -385,6 +377,8 @@ while True:
 
         # This cycle is intended to run continuously
     while drone_continuous_cycle:
+
+        actual_time = int(time.time())
 
         # Function that updates dron velocities in the override mode and autonomous mode 
         if send_rc_control:
