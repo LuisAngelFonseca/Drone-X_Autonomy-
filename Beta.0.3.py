@@ -121,16 +121,15 @@ def display_battery(frame_equ):
             print('Solicitar Bateria ')
             try:
                 battery = tello.get_battery()  # Get battery level of the drone
-                if not battery:  # Checks if string battery is not empty
+                if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
                     battery = int(battery)
                 else:
                     pass
             except:
                 battery = 0
         else:
-            # elapsed_time = elapsed_time
             actual_time = int(time.time())
-            # battery = battery
+
     # Request battery every 24 seconds in debug mode
     elif args.debug:
         if actual_time - elapsed_time > 24:
@@ -138,16 +137,14 @@ def display_battery(frame_equ):
             print('Solicitar Bateria Debug')
             try:
                 battery = tello.get_battery()  # Get battery level of the drone
-                if not battery:  # Checks if string battery is not empty
+                if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
                     battery = int(battery)
                 else:
                     pass
             except:
                 battery = 0
         else:
-            # elapsed_time = elapsed_time
             actual_time = int(time.time())
-            # battery = battery
 
     # Display a complete battery
     if battery > 75:
@@ -324,7 +321,7 @@ while True:
     OVERRIDE = False
     # Check tello battery before starting
     battery = tello.get_battery()  # Get battery level of the drone
-    if not battery:  # Checks if string battery is not empty
+    if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
         battery = int(battery)
     else:
         pass
