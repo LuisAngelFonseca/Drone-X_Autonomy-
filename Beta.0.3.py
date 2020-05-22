@@ -271,9 +271,7 @@ def drone_stay_close(x, y, limit_x1, limit_x2, limit_y1, limit_y2, radius, dista
 # Create an instance of a Drone from the Tello library
 tello = Tello()
 # Variable to check if drone is flying
-is_flying = False
-# Variable to start the velocities control if True
-send_rc_control = False
+is_flying_send_rc_control = False
 # Create a takeoff_timer for the takeoff and activate rc control
 takeoff_timer = 0
 # Frames per second of the stream
@@ -291,7 +289,7 @@ battery = 0
 # Grid size
 grid_size = 100
 # Radius of the object in which the drone will stop
-radius_stop = 90
+radius_stop = 60
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
@@ -386,7 +384,7 @@ while True:
 
         # --------------------------- SEND DRONE VELOCITY SECTION -----------------------------
         # Function that updates drone velocities in the override mode and autonomous mode
-        if send_rc_control:
+        if is_flying_send_rc_control:
             tello.send_rc_control(left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity)
 
         # --------------------------- FRAME READ SECTION -----------------------------
@@ -434,36 +432,26 @@ while True:
         # Wait for a key to be press and grabs the value
         k = cv2.waitKey(20)
 
-        # Drone Takeoff if the timer get to 40
-        if takeoff_timer == 40:
-            if not args.debug:
-                print('Takeoff...')
-                tello.get_battery()
-                tello.takeoff()
-                print('Ya hizo takeoff')
-                is_flying = True
-            send_rc_control = True
+        # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
+        if k == 27:
+            drone_continuous_cycle = False
+            break
 
         # Press T to take off in override mode
-        if (k == ord('t') or k == ord('T')) and not is_flying:
-            if not args.debug:
-                print('Override mode: Takeoff...')
-                tello.get_battery()
-                tello.takeoff()
-                is_flying = True
-
-            send_rc_control = True
+        if (k == ord('t') or k == ord('T')) and not is_flying_send_rc_control and not args.debug:
+            print('Override mode: Takeoff...')
+            tello.get_battery()
+            tello.takeoff()
+            is_flying_send_rc_control = True
 
         # Press L to land
-        if k == ord('l') or k == ord('L') and is_flying:
-            if not args.debug:
-                print('Override mode: Land...')
-                tello.land()
-                is_flying = False
-            send_rc_control = False
+        if (k == ord('l') or k == ord('L')) and is_flying_send_rc_control and not args.debug:
+            print('Override mode: Land...')
+            tello.land()
+            is_flying_send_rc_control = False
 
         # Press spacebar to enter override mode
-        if k == 32 and is_flying:
+        if k == 32 and is_flying_send_rc_control:
             if not OVERRIDE:
                 OVERRIDE = True
                 print('OVERRIDE ENABLED')
@@ -481,10 +469,10 @@ while True:
             else:
                 for_back_velocity = 0
 
-            # Z to fly clockwise and C to fly counter clockwise
-            if k == ord('z') or k == ord('Z'):
+            #  C to fly clockwise and Z to fly counter clockwise
+            if k == ord('c') or k == ord('C'):
                 yaw_velocity = int(S * oSpeed)
-            elif k == ord('c') or k == ord('C'):
+            elif k == ord('z') or k == ord('Z'):
                 yaw_velocity = -int(S * oSpeed)
             else:
                 yaw_velocity = 0
@@ -498,17 +486,12 @@ while True:
                 up_down_velocity = 0
 
             # A to fly left and D to fly right
-            if k == ord('a') or k == ord('A'):
+            if k == ord('d') or k == ord('D'):
                 left_right_velocity = int(S * oSpeed)
-            elif k == ord('d') or k == ord('D'):
+            elif k == ord('a') or k == ord('A'):
                 left_right_velocity = -int(S * oSpeed)
             else:
                 left_right_velocity = 0
-
-        # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
-        if k == 27:
-            drone_continuous_cycle = False
-            break
 
         # --------------------------- FRAME PROCESSING SECTION -----------------------------
         # Take 4 points from the frame
@@ -532,20 +515,26 @@ while True:
         # Display battery and logo in the video
         frame_user = display_battery(display_text(frame_grid))
 
-        # --------------------------- AUTONOMOUS VELOCITY SAVE SECTION -----------------------------
-        if send_rc_control and not OVERRIDE:
+        # --------------------------- AUTONOMOUS SECTION -----------------------------
+        # Drone Takeoff if the timer get to 40
+        if takeoff_timer == 40 and not args.debug:
+            print('Takeoff...')
+            tello.get_battery()
+            tello.takeoff()
+            print('Ya hizo takeoff')
+            is_flying_send_rc_control = True
 
-            if not args.debug:
-                # Eliminate pass values
-                left_right_velocity = 0
-                for_back_velocity = 0
-                up_down_velocity = 0
-                yaw_velocity = 0
+        if is_flying_send_rc_control and not OVERRIDE and not args.debug:
+            # Eliminate pass values
+            left_right_velocity = 0
+            for_back_velocity = 0
+            up_down_velocity = 0
+            yaw_velocity = 0
 
-                if detection:
-                    yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
-                                                                                         y_2, r, radius_stop,
-                                                                                         radius_stop_tolerance)
+            if detection:
+                yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
+                                                                                     y_2, r, radius_stop,
+                                                                                     radius_stop_tolerance)
 
         # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
