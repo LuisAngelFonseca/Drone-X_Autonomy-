@@ -271,9 +271,7 @@ def drone_stay_close(x, y, limit_x1, limit_x2, limit_y1, limit_y2, radius, dista
 # Create an instance of a Drone from the Tello library
 tello = Tello()
 # Variable to check if drone is flying
-is_flying = False
-# Variable to start the velocities control if True
-send_rc_control = False
+is_flying_send_rc_control = False
 # Create a takeoff_timer for the takeoff and activate rc control
 takeoff_timer = 0
 # Frames per second of the stream
@@ -386,7 +384,7 @@ while True:
 
         # --------------------------- SEND DRONE VELOCITY SECTION -----------------------------
         # Function that updates drone velocities in the override mode and autonomous mode
-        if send_rc_control:
+        if is_flying_send_rc_control:
             tello.send_rc_control(left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity)
 
         # --------------------------- FRAME READ SECTION -----------------------------
@@ -440,22 +438,20 @@ while True:
             break
 
         # Press T to take off in override mode
-        if (k == ord('t') or k == ord('T')) and not is_flying and not args.debug:
+        if (k == ord('t') or k == ord('T')) and not is_flying_send_rc_control and not args.debug:
             print('Override mode: Takeoff...')
             tello.get_battery()
             tello.takeoff()
-            is_flying = True
-            send_rc_control = True
+            is_flying_send_rc_control = True
 
         # Press L to land
-        if (k == ord('l') or k == ord('L')) and is_flying and not args.debug:
+        if (k == ord('l') or k == ord('L')) and is_flying_send_rc_control and not args.debug:
             print('Override mode: Land...')
             tello.land()
-            is_flying = False
-            send_rc_control = False
+            is_flying_send_rc_control = False
 
         # Press spacebar to enter override mode
-        if k == 32 and is_flying:
+        if k == 32 and is_flying_send_rc_control:
             if not OVERRIDE:
                 OVERRIDE = True
                 print('OVERRIDE ENABLED')
@@ -526,10 +522,9 @@ while True:
             tello.get_battery()
             tello.takeoff()
             print('Ya hizo takeoff')
-            is_flying = True
-            send_rc_control = True
+            is_flying_send_rc_control = True
 
-        if send_rc_control and not OVERRIDE and not args.debug:
+        if is_flying_send_rc_control and not OVERRIDE and not args.debug:
             # Eliminate pass values
             left_right_velocity = 0
             for_back_velocity = 0
