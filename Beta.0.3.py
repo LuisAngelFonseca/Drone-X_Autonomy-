@@ -291,7 +291,7 @@ battery = 0
 # Grid size
 grid_size = 100
 # Radius of the object in which the drone will stop
-radius_stop = 90
+radius_stop = 60
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
@@ -440,21 +440,18 @@ while True:
             break
 
         # Press T to take off in override mode
-        if (k == ord('t') or k == ord('T')) and not is_flying:
-            if not args.debug:
-                print('Override mode: Takeoff...')
-                tello.get_battery()
-                tello.takeoff()
-                is_flying = True
-
+        if (k == ord('t') or k == ord('T')) and not is_flying and not args.debug:
+            print('Override mode: Takeoff...')
+            tello.get_battery()
+            tello.takeoff()
+            is_flying = True
             send_rc_control = True
 
         # Press L to land
-        if k == ord('l') or k == ord('L') and is_flying:
-            if not args.debug:
-                print('Override mode: Land...')
-                tello.land()
-                is_flying = False
+        if (k == ord('l') or k == ord('L')) and is_flying and not args.debug:
+            print('Override mode: Land...')
+            tello.land()
+            is_flying = False
             send_rc_control = False
 
         # Press spacebar to enter override mode
@@ -524,28 +521,25 @@ while True:
 
         # --------------------------- AUTONOMOUS SECTION -----------------------------
         # Drone Takeoff if the timer get to 40
-        if takeoff_timer == 40:
-            if not args.debug:
-                print('Takeoff...')
-                tello.get_battery()
-                tello.takeoff()
-                print('Ya hizo takeoff')
-                is_flying = True
+        if takeoff_timer == 40 and not args.debug:
+            print('Takeoff...')
+            tello.get_battery()
+            tello.takeoff()
+            print('Ya hizo takeoff')
+            is_flying = True
             send_rc_control = True
 
-        if send_rc_control and not OVERRIDE:
+        if send_rc_control and not OVERRIDE and not args.debug:
+            # Eliminate pass values
+            left_right_velocity = 0
+            for_back_velocity = 0
+            up_down_velocity = 0
+            yaw_velocity = 0
 
-            if not args.debug:
-                # Eliminate pass values
-                left_right_velocity = 0
-                for_back_velocity = 0
-                up_down_velocity = 0
-                yaw_velocity = 0
-
-                if detection:
-                    yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
-                                                                                         y_2, r, radius_stop,
-                                                                                         radius_stop_tolerance)
+            if detection:
+                yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
+                                                                                     y_2, r, radius_stop,
+                                                                                     radius_stop_tolerance)
 
         # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
