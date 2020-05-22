@@ -63,15 +63,15 @@ def stackImages(scale, imgArray):
 def display_grid(frame, size, x, y):
     """ Display grid on the frame and display two lines from the center to the tracking object """
     # You can give a value to size to change the grid sizes
-    x1 = int(480 - (size))
-    x2 = int(480 + (size))
+    x1 = int(480 - size)
+    x2 = int(480 + size)
     y1 = int(360 - (size * (3 / 4)) - 60)
     y2 = int(360 + (size * (3 / 4)) - 60)
     cv2.line(frame, pt1=(x1, 0), pt2=(x1, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(x2, 0), pt2=(x2, 720), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y1), pt2=(960, y1), color=(255, 0, 0), thickness=2)
     cv2.line(frame, pt1=(0, y2), pt2=(960, y2), color=(255, 0, 0), thickness=2)
-    if x == None or y == None:
+    if x is None or y is None:
         x = 480
         y = 300
     # This part draw two lines from the center to the target
@@ -82,10 +82,9 @@ def display_grid(frame, size, x, y):
 
 
 def display_text(frame_equ):
-    """ Display text in the video """
-    # Diplay text in the image
+    """ Display Drone-x text in the middle upper part of video """
+    # Display text in the image
     font = cv2.FONT_ITALIC
-
     cv2.putText(frame_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
                 thickness=2, lineType=cv2.LINE_8)
 
@@ -93,12 +92,12 @@ def display_text(frame_equ):
 
 
 def display_override_text(frame_equ):
-    """ Display text in the video """
+    """ Display Override text in the left upper part of video """
     global actual_time, elapsed_time
     # Diplay text in the image
     font = cv2.FONT_HERSHEY_COMPLEX
     if actual_time - elapsed_time > 2:
-        cv2.putText(frame_equ, text='OVERRIDE MODE ON', org=(150, 20), fontFace=font, fontScale=.7, color=(0, 0, 255),
+        cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(150, 20), fontFace=font, fontScale=.7, color=(0, 0, 255),
                     thickness=1, lineType=cv2.LINE_8)
     else:
         actual_time = int(time.time())
@@ -521,7 +520,6 @@ while True:
                     yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
                                                                                          y_2, r, radius_stop,
                                                                                          radius_stop_tolerance)
-
 
         # Save the video session if True
         if args.save_session:
