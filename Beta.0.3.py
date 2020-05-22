@@ -422,7 +422,7 @@ while True:
             send_rc_control = True
 
         # Press T to take off in override mode 
-        if k == ord('t') and takeoff_timer > 50:
+        if (k == ord('t') or k == ord('T')) and takeoff_timer > 50:
             if not args.debug:
                 print('Override mode: Takeoff...')
                 tello.get_battery()
@@ -431,7 +431,7 @@ while True:
             send_rc_control = True
 
         # Press L to land
-        if k == ord('l'):
+        if k == ord('l') or k == ord('L'):
             if not args.debug:
                 print('Override mode: Land...')
                 tello.land()
@@ -449,33 +449,33 @@ while True:
         if OVERRIDE:
             frame = display_override_text(frame)
             # W to fly forward and S to fly back 
-            if k == ord('w'):
+            if k == ord('w') or k == ord('W'):
                 for_back_velocity = int(S * oSpeed)
-            elif k == ord('s'):
+            elif k == ord('s') or k == ord('S'):
                 for_back_velocity = -int(S * oSpeed)
             else:
                 for_back_velocity = 0
 
             # Z to fly clockwise and C to fly counter clockwise
-            if k == ord('z'):
+            if k == ord('z') or k == ord('Z'):
                 yaw_velocity = int(S * oSpeed)
-            elif k == ord('c'):
+            elif k == ord('c') or k == ord('C'):
                 yaw_velocity = -int(S * oSpeed)
             else:
                 yaw_velocity = 0
 
             # Q to fly up and E to fly down
-            if k == ord('q'):
+            if k == ord('q') or k == ord('Q'):
                 up_down_velocity = int(S * oSpeed)
-            elif k == ord('e'):
+            elif k == ord('e') or k == ord('E'):
                 up_down_velocity = -int(S * oSpeed)
             else:
                 up_down_velocity = 0
 
             # A to fly left and D to fly right
-            if k == ord('a'):
+            if k == ord('a') or k == ord('A'):
                 left_right_velocity = int(S * oSpeed)
-            elif k == ord('d'):
+            elif k == ord('d') or k == ord('D'):
                 left_right_velocity = -int(S * oSpeed)
             else:
                 left_right_velocity = 0
