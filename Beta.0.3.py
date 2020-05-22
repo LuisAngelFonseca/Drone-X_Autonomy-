@@ -96,13 +96,29 @@ def display_override_text(frame_equ):
     global actual_time, elapsed_override_blink
 
     # Display text in the image
-    font = cv2.FONT_HERSHEY_COMPLEX
+    font = cv2.FONT_ITALIC
     # This is to make the text blink one second on, one second off
     if 1 < actual_time - elapsed_override_blink < 2:
-        cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(150, 20), fontFace=font, fontScale=.7, color=(0, 0, 255),
-                    thickness=1, lineType=cv2.LINE_8)
+        cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(5, 25), fontFace=font, fontScale=1, color=(0, 0, 255),
+                    thickness=2, lineType=cv2.LINE_8)
     elif actual_time - elapsed_override_blink > 2:
         elapsed_override_blink = actual_time
+
+    return frame_equ  # Return the frame with the text
+
+
+def display_debug_text(frame_equ):
+    """ Display Debug text in the left upper part of video """
+    global actual_time, elapsed_debug_blink
+
+    # Display text in the image
+    font = cv2.FONT_ITALIC
+    # This is to make the text blink one second on, one second off
+    if 1 < actual_time - elapsed_debug_blink < 2:
+        cv2.putText(frame_equ, text='DEBUG MODE: ON', org=(5, 25), fontFace=font, fontScale=1, color=(0, 0, 255),
+                    thickness=2, lineType=cv2.LINE_8)
+    elif actual_time - elapsed_debug_blink > 2:
+        elapsed_debug_blink = actual_time
 
     return frame_equ  # Return the frame with the text
 
@@ -298,6 +314,8 @@ actual_time = time.time()
 elapsed_time = actual_time
 # Create variables that count time to blink override text
 elapsed_override_blink = actual_time
+# Create variables that count time to blink debug text
+elapsed_debug_blink = actual_time
 # Create variables that count time to blink battery when low
 elapsed_battery_blink = actual_time
 
@@ -460,7 +478,6 @@ while True:
                 print('OVERRIDE DISABLED')
 
         if OVERRIDE:
-            frame = display_override_text(frame)
             # W to fly forward and S to fly back
             if k == ord('w') or k == ord('W'):
                 for_back_velocity = int(S * oSpeed)
@@ -512,8 +529,12 @@ while True:
         # Display grid in the actual frame
         x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
 
-        # Display battery and logo in the video
+        # Display battery, logo and mode in the video
         frame_user = display_battery(display_text(frame_grid))
+        if OVERRIDE:
+            frame_user = display_override_text(frame_user)
+        if args.debug:
+            frame_user = display_debug_text(frame_user)
 
         # --------------------------- AUTONOMOUS SECTION -----------------------------
         # Drone Takeoff if the timer get to 40
