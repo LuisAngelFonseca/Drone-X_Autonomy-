@@ -95,15 +95,14 @@ def display_override_text(frame_equ):
     """ Display Override text in the left upper part of video """
     global actual_time, elapsed_override_blink
 
-    # Diplay text in the image
+    # Display text in the image
     font = cv2.FONT_HERSHEY_COMPLEX
-    # This is to make the text blink
-    actual_override_blink = int(time.time())
-    if actual_override_blink - elapsed_override_blink > 1:
+    # This is to make the text blink one second on, one second off
+    if 1 < actual_time - elapsed_override_blink < 2:
         cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(150, 20), fontFace=font, fontScale=.7, color=(0, 0, 255),
                     thickness=1, lineType=cv2.LINE_8)
-    elif actual_override_blink - elapsed_override_blink > 2:
-        elapsed_override_blink = actual_override_blink
+    elif actual_time - elapsed_override_blink > 2:
+        elapsed_override_blink = actual_time
 
     return frame_equ  # Return the frame with the text
 
@@ -158,8 +157,10 @@ def display_battery(frame_equ):
         cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
     # Display 1/3 of the battery blinking
     elif battery < 25:
-        if actual_time - elapsed_battery_blink > 1:
+        # Blinks battery every 0.5 seconds
+        if 0.5 < actual_time - elapsed_battery_blink < 1:
             cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
+        elif actual_time - elapsed_battery_blink > 1:
             elapsed_battery_blink = actual_time
 
     return frame_equ
@@ -295,7 +296,7 @@ radius_stop = 40
 radius_stop_tolerance = 5
 
 # Create variables that counts time
-actual_time = int(time.time())
+actual_time = time.time()
 elapsed_time = actual_time
 # Create variables that count time to blink override text
 elapsed_override_blink = actual_time
@@ -378,7 +379,7 @@ while True:
         # This cycle is intended to run continuously
     while drone_continuous_cycle:
 
-        actual_time = int(time.time())
+        actual_time = time.time()
 
         # Function that updates dron velocities in the override mode and autonomous mode 
         if send_rc_control:
