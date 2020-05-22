@@ -434,15 +434,10 @@ while True:
         # Wait for a key to be press and grabs the value
         k = cv2.waitKey(20)
 
-        # Drone Takeoff if the timer get to 40
-        if takeoff_timer == 40:
-            if not args.debug:
-                print('Takeoff...')
-                tello.get_battery()
-                tello.takeoff()
-                print('Ya hizo takeoff')
-                is_flying = True
-            send_rc_control = True
+        # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
+        if k == 27:
+            drone_continuous_cycle = False
+            break
 
         # Press T to take off in override mode
         if (k == ord('t') or k == ord('T')) and not is_flying:
@@ -481,10 +476,10 @@ while True:
             else:
                 for_back_velocity = 0
 
-            # Z to fly clockwise and C to fly counter clockwise
-            if k == ord('z') or k == ord('Z'):
+            #  C to fly clockwise and Z to fly counter clockwise
+            if k == ord('c') or k == ord('C'):
                 yaw_velocity = int(S * oSpeed)
-            elif k == ord('c') or k == ord('C'):
+            elif k == ord('z') or k == ord('Z'):
                 yaw_velocity = -int(S * oSpeed)
             else:
                 yaw_velocity = 0
@@ -498,17 +493,12 @@ while True:
                 up_down_velocity = 0
 
             # A to fly left and D to fly right
-            if k == ord('a') or k == ord('A'):
+            if k == ord('d') or k == ord('D'):
                 left_right_velocity = int(S * oSpeed)
-            elif k == ord('d') or k == ord('D'):
+            elif k == ord('a') or k == ord('A'):
                 left_right_velocity = -int(S * oSpeed)
             else:
                 left_right_velocity = 0
-
-        # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
-        if k == 27:
-            drone_continuous_cycle = False
-            break
 
         # --------------------------- FRAME PROCESSING SECTION -----------------------------
         # Take 4 points from the frame
@@ -532,7 +522,17 @@ while True:
         # Display battery and logo in the video
         frame_user = display_battery(display_text(frame_grid))
 
-        # --------------------------- AUTONOMOUS VELOCITY SAVE SECTION -----------------------------
+        # --------------------------- AUTONOMOUS SECTION -----------------------------
+        # Drone Takeoff if the timer get to 40
+        if takeoff_timer == 40:
+            if not args.debug:
+                print('Takeoff...')
+                tello.get_battery()
+                tello.takeoff()
+                print('Ya hizo takeoff')
+                is_flying = True
+            send_rc_control = True
+
         if send_rc_control and not OVERRIDE:
 
             if not args.debug:
