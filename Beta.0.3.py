@@ -291,7 +291,7 @@ battery = 0
 # Grid size
 grid_size = 100
 # Radius of the object in which the drone will stop
-radius_stop = 40
+radius_stop = 90
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
@@ -303,8 +303,10 @@ elapsed_override_blink = actual_time
 # Create variables that count time to blink battery when low
 elapsed_battery_blink = actual_time
 
-# Main Loop
+# -<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<  DRONE CYCLE ->->->->->->->->->->->->->->->->->->->->->
 while True:
+
+    # --------------------------- TELLO SETUP SECTION -----------------------------
     # Restore values to 0, to clean past values
     left_right_velocity = 0
     for_back_velocity = 0
@@ -320,11 +322,7 @@ while True:
     if not tello.streamon():
         print('Could not start video stream')
 
-    # Capture a frame from drone camera
-    frame_read = tello.get_frame_read()
-    # Take the original frame for the video capture of the session
-    frame_original = frame_read.frame
-
+    # --------------------------- VARIABLE DECLARATION SECTION -----------------------------
     # Infinite cycle to run code
     drone_continuous_cycle = True
     # You change the value with the spacebar and give you the manual control of the drone
@@ -336,6 +334,7 @@ while True:
     else:
         pass
 
+    # --------------------------- DEBUG TRACKBAR SECTION -----------------------------
     # This checks if we are in the debug mode,
     if args.debug:
         # Start debug mode, to calibrate de HSV values
@@ -356,7 +355,13 @@ while True:
         # ITERATIONS
         cv2.createTrackbar('Erosion', 'Color Calibration', 0, 30, callback)
         cv2.createTrackbar('Dilation', 'Color Calibration', 0, 30, callback)
-    # Check if save session mode is on 
+
+    # --------------------------- SAVE SESSION SECTION -----------------------------
+    # Capture a frame from drone camera
+    frame_read = tello.get_frame_read()
+    # Take the original frame for the video capture of the session
+    frame_original = frame_read.frame
+    # Check if save session mode is on
     if args.save_session:
 
         # If we are to save our sessions, we need to make sure the proper directories exist
@@ -367,35 +372,37 @@ while True:
         # We create a new folder path to save the actual video session with day and time
         ddir = "Sessions/Session {}".format(str(datetime.datetime.now()).replace(':', '-').replace('.', '_'))
         os.mkdir(ddir)
-        # Get the frame size 
+        # Get the frame size
         width = frame_original.shape[1]
         height = frame_original.shape[0]
-        # We create two writer objects that create the video sessions 
+        # We create two writer objects that create the video sessions
         writer = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
                                  FPS_vid, (width, height))
         writer_processed = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
                                            FPS_vid, (width, height))
 
-        # This cycle is intended to run continuously
+    # -<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-< CONTINUOUS DRONE CYCLE ->->->->->->->->->->->->->->->->->->->->->
     while drone_continuous_cycle:
 
-        actual_time = time.time()
-
-        # Function that updates dron velocities in the override mode and autonomous mode 
+        # --------------------------- SEND DRONE VELOCITY SECTION -----------------------------
+        # Function that updates drone velocities in the override mode and autonomous mode
         if send_rc_control:
             tello.send_rc_control(left_right_velocity, for_back_velocity, up_down_velocity, yaw_velocity)
-        # If theres no frame, do not read the actual frame 
+
+        # --------------------------- FRAME READ SECTION -----------------------------
+        # If there is no frame, do not read the actual frame
         if frame_read.stopped:
             frame_read.stop()
             break
 
-        # Update frame 
+        # Update frame
         frame_original = frame_read.frame
         frame = frame_original.copy()
 
-        # Update the track bars HSV mask and apply the erosion and dilation
+        # --------------------------- DEBUG CALIBRATION SECTION -----------------------------
+        # Update the trackbars HSV mask and apply the erosion and dilation
         if args.debug:
-            # Read all the track bars positions
+            # Read all the trackbars positions
             h_min = cv2.getTrackbarPos('Hue Min', 'Color Calibration')
             h_max = cv2.getTrackbarPos('Hue Max', 'Color Calibration')
             s_min = cv2.getTrackbarPos('Sat Min', 'Color Calibration')
@@ -423,6 +430,7 @@ while True:
 
             cv2.imshow('Stacked Images', frameStack)
 
+        # --------------------------- READ KEY SECTION -----------------------------
         # Wait for a key to be press and grabs the value
         k = cv2.waitKey(20)
 
@@ -436,7 +444,7 @@ while True:
                 is_flying = True
             send_rc_control = True
 
-        # Press T to take off in override mode 
+        # Press T to take off in override mode
         if (k == ord('t') or k == ord('T')) and not is_flying:
             if not args.debug:
                 print('Override mode: Takeoff...')
@@ -465,7 +473,7 @@ while True:
 
         if OVERRIDE:
             frame = display_override_text(frame)
-            # W to fly forward and S to fly back 
+            # W to fly forward and S to fly back
             if k == ord('w') or k == ord('W'):
                 for_back_velocity = int(S * oSpeed)
             elif k == ord('s') or k == ord('S'):
@@ -497,25 +505,26 @@ while True:
             else:
                 left_right_velocity = 0
 
-        # Press ESC to quit ---> EXIT PROGRAM <---
+        # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
         if k == 27:
             drone_continuous_cycle = False
             break
 
-        # Take 4 points from the frame 
+        # --------------------------- FRAME PROCESSING SECTION -----------------------------
+        # Take 4 points from the frame
         pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
-        # Make the new screen size 
+        # Make the new screen size
         pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
 
         # Change the perspective of the frame to counteract the camera angle
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
-        frame = cv2.warpPerspective(frame, matrix, (960, 720))
+        frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
 
-        # If we are in debug mode, send the track bars values to the object detection algorithm
+        # If we are in debug mode, send the trackbars values to the object detection algorithm
         if args.debug:
-            x, y, r, detection, frame_processed = object_detection(frame, lower_hsv, upper_hsv)
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
         else:
-            x, y, r, detection, frame_processed = object_detection(frame, 0, 0)
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
 
         # Display grid in the actual frame
         x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
@@ -523,7 +532,7 @@ while True:
         # Display battery and logo in the video
         frame_user = display_battery(display_text(frame_grid))
 
-        # Autonomous mode
+        # --------------------------- AUTONOMOUS VELOCITY SAVE SECTION -----------------------------
         if send_rc_control and not OVERRIDE:
 
             if not args.debug:
@@ -538,14 +547,19 @@ while True:
                                                                                          y_2, r, radius_stop,
                                                                                          radius_stop_tolerance)
 
+        # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
         if args.save_session:
             writer.write(frame_original)
             writer_processed.write(frame_user)
 
+        # --------------------------- SHOW VIDEO SECTION -----------------------------
         # Display the video
         cv2.imshow('Drone X', frame_user)
 
+        # --------------------------- MISCELLANEOUS SECTION -----------------------------
+        # Save actual time
+        actual_time = time.time()
         # Delay to showcase desired fps in video
         time.sleep(1 / FPS)
         # Update takeoff timer
@@ -554,7 +568,6 @@ while True:
     break
 
 cv2.destroyAllWindows()
-
 print('Goodbye')
 tello.get_battery()
 tello.end()
