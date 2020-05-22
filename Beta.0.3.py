@@ -430,43 +430,6 @@ while True:
 
             cv2.imshow('Stacked Images', frameStack)
 
-        # --------------------------- FRAME PROCESSING SECTION -----------------------------
-        # Take 4 points from the frame
-        pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
-        # Make the new screen size
-        pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
-
-        # Change the perspective of the frame to counteract the camera angle
-        matrix = cv2.getPerspectiveTransform(pts1, pts2)
-        frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
-
-        # If we are in debug mode, send the trackbars values to the object detection algorithm
-        if args.debug:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
-        else:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
-
-        # Display grid in the actual frame
-        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
-
-        # Display battery and logo in the video
-        frame_user = display_battery(display_text(frame_grid))
-
-        # --------------------------- AUTONOMOUS VELOCITY SAVE SECTION -----------------------------
-        if send_rc_control and not OVERRIDE:
-
-            if not args.debug:
-                # Eliminate pass values
-                left_right_velocity = 0
-                for_back_velocity = 0
-                up_down_velocity = 0
-                yaw_velocity = 0
-
-                if detection:
-                    yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
-                                                                                         y_2, r, radius_stop,
-                                                                                         radius_stop_tolerance)
-
         # --------------------------- READ KEY SECTION -----------------------------
         # Wait for a key to be press and grabs the value
         k = cv2.waitKey(20)
@@ -546,6 +509,43 @@ while True:
         if k == 27:
             drone_continuous_cycle = False
             break
+
+        # --------------------------- FRAME PROCESSING SECTION -----------------------------
+        # Take 4 points from the frame
+        pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
+        # Make the new screen size
+        pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
+
+        # Change the perspective of the frame to counteract the camera angle
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
+        frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
+
+        # If we are in debug mode, send the trackbars values to the object detection algorithm
+        if args.debug:
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
+        else:
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
+
+        # Display grid in the actual frame
+        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
+
+        # Display battery and logo in the video
+        frame_user = display_battery(display_text(frame_grid))
+
+        # --------------------------- AUTONOMOUS VELOCITY SAVE SECTION -----------------------------
+        if send_rc_control and not OVERRIDE:
+
+            if not args.debug:
+                # Eliminate pass values
+                left_right_velocity = 0
+                for_back_velocity = 0
+                up_down_velocity = 0
+                yaw_velocity = 0
+
+                if detection:
+                    yaw_velocity, up_down_velocity, for_back_velocity = drone_stay_close(x, y, x_1, x_2, y_1,
+                                                                                         y_2, r, radius_stop,
+                                                                                         radius_stop_tolerance)
 
         # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
