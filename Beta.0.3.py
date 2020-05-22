@@ -91,15 +91,35 @@ def display_text(frame_equ):
     return frame_equ  # Return the frame with the text
 
 
+def display_taking_off_text(frame_equ):
+    """ Display Taking off... text in the middle upper part of video """
+    # Display text in the image
+    font = cv2.FONT_ITALIC
+    cv2.putText(frame_equ, text='Taking off...', org=(5, 25), fontFace=font, fontScale=1, color=(0, 255, 255),
+                thickness=2, lineType=cv2.LINE_8)
+
+    return frame_equ  # Return the frame with the text
+
+
+def display_landing_text(frame_equ):
+    """ Display Taking off... text in the middle upper part of video """
+    # Display text in the image
+    font = cv2.FONT_ITALIC
+    cv2.putText(frame_equ, text='Landing...', org=(5, 25), fontFace=font, fontScale=1, color=(0, 255, 255),
+                thickness=2, lineType=cv2.LINE_8)
+
+    return frame_equ  # Return the frame with the text
+
+
 def display_override_text(frame_equ):
     """ Display Override text in the left upper part of video """
-    global actual_time, elapsed_override_blink
+    global actual_time, elapsed_override_blink, is_taking_off, is_landing
 
     # Display text in the image
     font = cv2.FONT_ITALIC
     # This is to make the text blink one second on, one second off
     if 1 < actual_time - elapsed_override_blink < 2:
-        cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(5, 25), fontFace=font, fontScale=1, color=(0, 0, 255),
+        cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(5, 710), fontFace=font, fontScale=1, color=(0, 0, 255),
                     thickness=2, lineType=cv2.LINE_8)
     elif actual_time - elapsed_override_blink > 2:
         elapsed_override_blink = actual_time
@@ -288,8 +308,10 @@ def drone_stay_close(x, y, limit_x1, limit_x2, limit_y1, limit_y2, radius, dista
 tello = Tello()
 # Variable to check if drone is flying
 is_flying_send_rc_control = False
-# Create a takeoff_timer for the takeoff and activate rc control
-takeoff_timer = 0
+# Create a taking off boolean
+is_taking_off = False
+# Create a landing boolean
+is_landing = False
 # Frames per second of the stream
 FPS = 25
 # Frames per second for the video capture
@@ -305,7 +327,7 @@ battery = 0
 # Grid size
 grid_size = 100
 # Radius of the object in which the drone will stop
-radius_stop = 60
+radius_stop = 90
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
@@ -446,27 +468,70 @@ while True:
 
             cv2.imshow('Stacked Images', frameStack)
 
+        # --------------------------- FRAME PROCESSING SECTION -----------------------------
+        # Take 4 points from the frame
+        pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
+        # Make the new screen size
+        pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
+
+        # Change the perspective of the frame to counteract the camera angle
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
+        frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
+
+        # If we are in debug mode, send the trackbars values to the object detection algorithm
+        if args.debug:
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
+        else:
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
+
+        # Display grid in the actual frame
+        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
+
+        # Display battery, logo and mode in the video
+        frame_user = display_battery(display_text(frame_grid))
+        if OVERRIDE:
+            frame_user = display_override_text(frame_user)
+        if args.debug:
+            frame_user = display_debug_text(frame_user)
+
         # --------------------------- READ KEY SECTION -----------------------------
         # Wait for a key to be press and grabs the value
         k = cv2.waitKey(20)
 
         # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
         if k == 27:
+            if is_flying_send_rc_control:
+                for i in range(50):
+                    tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
+                    time.sleep(1 / FPS)
             drone_continuous_cycle = False
             break
 
-        # Press T to take off in override mode
-        if (k == ord('t') or k == ord('T')) and not is_flying_send_rc_control and not args.debug:
-            print('Override mode: Takeoff...')
+        if is_taking_off:
             tello.get_battery()
             tello.takeoff()
             is_flying_send_rc_control = True
+            is_taking_off = False
+
+        # Press T to take off
+        if (k == ord('t') or k == ord('T')) and not is_flying_send_rc_control and not args.debug:
+            is_taking_off = True
+            print('Takeoff...')
+            frame_user = display_taking_off_text(frame_user)
+
+        if is_landing:
+            for i in range(50):
+                tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
+                time.sleep(1 / FPS)
+            tello.land()
+            is_flying_send_rc_control = False
+            is_landing = False
 
         # Press L to land
         if (k == ord('l') or k == ord('L')) and is_flying_send_rc_control and not args.debug:
-            print('Override mode: Land...')
-            tello.land()
-            is_flying_send_rc_control = False
+            is_landing = True
+            print('Land...')
+            frame_user = display_landing_text(frame_user)
 
         # Press spacebar to enter override mode
         if k == 32 and is_flying_send_rc_control:
@@ -510,41 +575,7 @@ while True:
             else:
                 left_right_velocity = 0
 
-        # --------------------------- FRAME PROCESSING SECTION -----------------------------
-        # Take 4 points from the frame
-        pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
-        # Make the new screen size
-        pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
-
-        # Change the perspective of the frame to counteract the camera angle
-        matrix = cv2.getPerspectiveTransform(pts1, pts2)
-        frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
-
-        # If we are in debug mode, send the trackbars values to the object detection algorithm
-        if args.debug:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
-        else:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
-
-        # Display grid in the actual frame
-        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
-
-        # Display battery, logo and mode in the video
-        frame_user = display_battery(display_text(frame_grid))
-        if OVERRIDE:
-            frame_user = display_override_text(frame_user)
-        if args.debug:
-            frame_user = display_debug_text(frame_user)
-
         # --------------------------- AUTONOMOUS SECTION -----------------------------
-        # Drone Takeoff if the timer get to 40
-        if takeoff_timer == 40 and not args.debug:
-            print('Takeoff...')
-            tello.get_battery()
-            tello.takeoff()
-            print('Ya hizo takeoff')
-            is_flying_send_rc_control = True
-
         if is_flying_send_rc_control and not OVERRIDE and not args.debug:
             # Eliminate pass values
             left_right_velocity = 0
@@ -572,8 +603,6 @@ while True:
         actual_time = time.time()
         # Delay to showcase desired fps in video
         time.sleep(1 / FPS)
-        # Update takeoff timer
-        takeoff_timer += 1
 
     break
 
