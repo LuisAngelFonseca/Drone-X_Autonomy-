@@ -93,15 +93,17 @@ def display_text(frame_equ):
 
 def display_override_text(frame_equ):
     """ Display Override text in the left upper part of video """
-    global actual_time, elapsed_time
+    global actual_override_blink, elapsed_override_blink
+
     # Diplay text in the image
     font = cv2.FONT_HERSHEY_COMPLEX
     # This is to make the text blink
-    if actual_time - elapsed_time > 2:
+    actual_override_blink = int(time.time())
+    if actual_override_blink - elapsed_override_blink > 1:
         cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(150, 20), fontFace=font, fontScale=.7, color=(0, 0, 255),
                     thickness=1, lineType=cv2.LINE_8)
-    else:
-        actual_time = int(time.time())
+    elif actual_override_blink - elapsed_override_blink > 2:
+        elapsed_override_blink = actual_override_blink
 
     return frame_equ  # Return the frame with the text
 
@@ -112,7 +114,7 @@ def display_battery(frame_equ):
     cv2.rectangle(frame_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness=2)
     cv2.rectangle(frame_equ, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
 
-    global elapsed_time, actual_time, battery
+    global elapsed_time, actual_time, battery, actual_battery_blink, elapsed_battery_blink
 
     # Request battery every 15 seconds in autonomous mode
     if not args.debug:
@@ -158,6 +160,13 @@ def display_battery(frame_equ):
     # Display 1/3 of the battery
     elif 50 > battery > 25:
         cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
+    # Display 1/3 of the battery blinking
+    elif battery < 25:
+        if actual_battery_blink - elapsed_battery_blink > 1:
+            cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
+            elapsed_battery_blink = actual_battery_blink
+        else:
+            actual_battery_blink = int(time.time())
 
     return frame_equ
 
@@ -266,6 +275,8 @@ def drone_stay_close(x, y, limit_x1, limit_x2, limit_y1, limit_y2, radius, dista
 # Setup
 # Create an instance of a Drone from the Tello library
 tello = Tello()
+# Variable to check if drone is flying
+is_flying = False
 # Variable to start the velocities control if True
 send_rc_control = False
 # Create a takeoff_timer for the takeoff and activate rc control
@@ -289,9 +300,15 @@ radius_stop = 40
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
-# Create 2 variables that count time
+# Create variables that count time to solicit battery
 actual_time = int(time.time())
-elapsed_time = int(time.time())
+elapsed_time = actual_time
+# Create variables that count time to blink override text
+actual_override_blink = int(time.time())
+elapsed_override_blink = actual_override_blink
+# Create variables that count time to blink battery when low
+actual_battery_blink = int(time.time())
+elapsed_battery_blink = actual_battery_blink
 
 # Main Loop
 while True:
@@ -420,26 +437,30 @@ while True:
                 print('Takeoff...')
                 tello.get_battery()
                 tello.takeoff()
+                print('Ya hizo takeoff')
+                is_flying = True
             send_rc_control = True
 
         # Press T to take off in override mode 
-        if (k == ord('t') or k == ord('T')) and takeoff_timer > 50:
+        if (k == ord('t') or k == ord('T')) and not is_flying:
             if not args.debug:
                 print('Override mode: Takeoff...')
                 tello.get_battery()
                 tello.takeoff()
+                is_flying = True
 
             send_rc_control = True
 
         # Press L to land
-        if k == ord('l') or k == ord('L'):
+        if k == ord('l') or k == ord('L') and is_flying:
             if not args.debug:
                 print('Override mode: Land...')
                 tello.land()
+                is_flying = False
             send_rc_control = False
 
         # Press spacebar to enter override mode
-        if k == 32:
+        if k == 32 and is_flying:
             if not OVERRIDE:
                 OVERRIDE = True
                 print('OVERRIDE ENABLED')
