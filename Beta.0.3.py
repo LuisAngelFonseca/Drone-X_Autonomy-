@@ -103,63 +103,67 @@ def display_text(frame, text, org, color, blink=False):
     return frame  # Return the frame with the text
 
 
-def display_battery(frame_equ):
-    """ Display a battery in the video that indicate the percentage of battery """
-    # Display a battery in the image
-    cv2.rectangle(frame_equ, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness=2)
-    cv2.rectangle(frame_equ, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
-
+def display_icons(frame, bat=True, rec=False):
+    """ Display icons in the video """
     global elapsed_time, actual_time, battery, elapsed_battery_blink
 
-    # Request battery every 15 seconds in autonomous mode
-    if not args.debug:
-        if actual_time - elapsed_time > 15:
-            elapsed_time = actual_time
-            print('Solicitar Bateria ')
-            try:
-                battery = tello.get_battery()  # Get battery level of the drone
-                if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
-                    battery = int(battery)
-                else:
-                    pass
-            except:
-                battery = 0
+    if bat:
+        # Display a battery in the image representing its percentage
+        cv2.rectangle(frame, pt1=(920, 5), pt2=(950, 25), color=(255, 255, 255), thickness=2)
+        cv2.rectangle(frame, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
 
-    # Request battery every 24 seconds in debug mode
-    elif args.debug:
-        if actual_time - elapsed_time > 24:
-            elapsed_time = actual_time
-            print('Solicitar Bateria Debug')
-            try:
-                battery = tello.get_battery()  # Get battery level of the drone
-                if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
-                    battery = int(battery)
-                else:
-                    pass
-            except:
-                battery = 0
+        # Request battery every 15 seconds in autonomous mode
+        if not args.debug:
+            if actual_time - elapsed_time > 15:
+                elapsed_time = actual_time
+                print('Solicitar Bateria ')
+                try:
+                    battery = tello.get_battery()  # Get battery level of the drone
+                    if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
+                        battery = int(battery)
+                    else:
+                        pass
+                except:
+                    battery = 0
 
-    # Display a complete battery
-    if battery > 75:
-        cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 0), thickness=-1)
-        cv2.rectangle(frame_equ, pt1=(932, 9), pt2=(938, 21), color=(0, 255, 0), thickness=-1)
-        cv2.rectangle(frame_equ, pt1=(940, 9), pt2=(947, 21), color=(0, 255, 0), thickness=-1)
-    # Display a 2/3 of the battery
-    elif 75 > battery > 50:
-        cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 255), thickness=-1)
-        cv2.rectangle(frame_equ, pt1=(932, 9), pt2=(940, 21), color=(0, 255, 255), thickness=-1)
-    # Display 1/3 of the battery
-    elif 50 > battery > 25:
-        cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
-    # Display 1/3 of the battery blinking
-    elif battery < 25:
-        # Blinks battery every 0.5 seconds
-        if 0.5 < actual_time - elapsed_battery_blink < 1:
-            cv2.rectangle(frame_equ, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
-        elif actual_time - elapsed_battery_blink > 1:
-            elapsed_battery_blink = actual_time
+        # Request battery every 24 seconds in debug mode
+        elif args.debug:
+            if actual_time - elapsed_time > 24:
+                elapsed_time = actual_time
+                print('Solicitar Bateria Debug')
+                try:
+                    battery = tello.get_battery()  # Get battery level of the drone
+                    if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
+                        battery = int(battery)
+                    else:
+                        pass
+                except:
+                    battery = 0
 
-    return frame_equ
+        # Display a complete battery
+        if battery > 75:
+            cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 0), thickness=-1)
+            cv2.rectangle(frame, pt1=(932, 9), pt2=(938, 21), color=(0, 255, 0), thickness=-1)
+            cv2.rectangle(frame, pt1=(940, 9), pt2=(947, 21), color=(0, 255, 0), thickness=-1)
+        # Display a 2/3 of the battery
+        elif 75 > battery > 50:
+            cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 255), thickness=-1)
+            cv2.rectangle(frame, pt1=(932, 9), pt2=(940, 21), color=(0, 255, 255), thickness=-1)
+        # Display 1/3 of the battery
+        elif 50 > battery > 25:
+            cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
+        # Display 1/3 of the battery blinking
+        elif battery < 25:
+            # Blinks battery every 0.5 seconds
+            if 0.5 < actual_time - elapsed_battery_blink < 1:
+                cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
+            elif actual_time - elapsed_battery_blink > 1:
+                elapsed_battery_blink = actual_time
+
+    if rec:
+        cv2.circle(frame, (908, 7), 2, (0, 225, 255), -1)  # Put a red circle indicating its recording
+
+    return frame
 
 
 def object_detection(frame, lower_hsv, upper_hsv):
@@ -446,7 +450,7 @@ while True:
         x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
 
         # Display battery, logo and mode in the video
-        frame_user = display_battery(display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)))
+        frame_user = display_icons(display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)), bat=True)
         if OVERRIDE:
             frame_user = display_text(frame_user, 'OVERRIDE MODE: ON', (5, 710), (0, 0, 255), blink=True)
         if args.debug:
@@ -549,6 +553,8 @@ while True:
         # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
         if args.save_session:
+            frame_user = display_text(frame_user, 'REC', (858, 9), (0, 0, 0))
+            frame_user = display_icons(frame_user, bat=True, rec=True)
             writer.write(frame_original)
             writer_processed.write(frame_user)
 
