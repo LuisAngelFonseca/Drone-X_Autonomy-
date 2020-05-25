@@ -81,66 +81,26 @@ def display_grid(frame, size, x, y):
     return x1, x2, y1, y2, frame  # Return the position of each line and the frame
 
 
-def display_text(frame_equ):
-    """ Display Drone-x text in the middle upper part of video """
-    # Display text in the image
+def display_text(frame, text, org, color, blink=False):
+    """ Display text in the video """
+    global actual_time, elapsed_text_blink
+
     font = cv2.FONT_ITALIC
-    cv2.putText(frame_equ, text='Drone-X', org=(410, 25), fontFace=font, fontScale=1, color=(0, 0, 0),
-                thickness=2, lineType=cv2.LINE_8)
+    #  Check if the text is needed to blink
+    if blink:
+        # This is to make the text blink one second on, one second off
+        if 1 < actual_time - elapsed_text_blink < 2:
+            cv2.putText(frame, text=text, org=org, fontFace=font, fontScale=1, color=color,
+                        thickness=2, lineType=cv2.LINE_8)
+        elif actual_time - elapsed_text_blink > 2:
+            elapsed_text_blink = actual_time
 
-    return frame_equ  # Return the frame with the text
-
-
-def display_taking_off_text(frame_equ):
-    """ Display Taking off... text in the middle upper part of video """
-    # Display text in the image
-    font = cv2.FONT_ITALIC
-    cv2.putText(frame_equ, text='Taking off...', org=(5, 25), fontFace=font, fontScale=1, color=(0, 255, 255),
-                thickness=2, lineType=cv2.LINE_8)
-
-    return frame_equ  # Return the frame with the text
-
-
-def display_landing_text(frame_equ):
-    """ Display Taking off... text in the middle upper part of video """
-    # Display text in the image
-    font = cv2.FONT_ITALIC
-    cv2.putText(frame_equ, text='Landing...', org=(5, 25), fontFace=font, fontScale=1, color=(0, 255, 255),
-                thickness=2, lineType=cv2.LINE_8)
-
-    return frame_equ  # Return the frame with the text
-
-
-def display_override_text(frame_equ):
-    """ Display Override text in the left upper part of video """
-    global actual_time, elapsed_override_blink, is_taking_off, is_landing
-
-    # Display text in the image
-    font = cv2.FONT_ITALIC
-    # This is to make the text blink one second on, one second off
-    if 1 < actual_time - elapsed_override_blink < 2:
-        cv2.putText(frame_equ, text='OVERRIDE MODE: ON', org=(5, 710), fontFace=font, fontScale=1, color=(0, 0, 255),
+    #  Display normal text is needed to blink
+    else:
+        cv2.putText(frame, text=text, org=org, fontFace=font, fontScale=1, color=color,
                     thickness=2, lineType=cv2.LINE_8)
-    elif actual_time - elapsed_override_blink > 2:
-        elapsed_override_blink = actual_time
 
-    return frame_equ  # Return the frame with the text
-
-
-def display_debug_text(frame_equ):
-    """ Display Debug text in the left upper part of video """
-    global actual_time, elapsed_debug_blink
-
-    # Display text in the image
-    font = cv2.FONT_ITALIC
-    # This is to make the text blink one second on, one second off
-    if 1 < actual_time - elapsed_debug_blink < 2:
-        cv2.putText(frame_equ, text='DEBUG MODE: ON', org=(5, 25), fontFace=font, fontScale=1, color=(0, 0, 255),
-                    thickness=2, lineType=cv2.LINE_8)
-    elif actual_time - elapsed_debug_blink > 2:
-        elapsed_debug_blink = actual_time
-
-    return frame_equ  # Return the frame with the text
+    return frame  # Return the frame with the text
 
 
 def display_battery(frame_equ):
@@ -561,11 +521,11 @@ while True:
         x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
 
         # Display battery, logo and mode in the video
-        frame_user = display_battery(display_text(frame_grid))
+        frame_user = display_battery(display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)))
         if OVERRIDE:
-            frame_user = display_override_text(frame_user)
+            frame_user = display_text(frame_user, 'OVERRIDE MODE: ON', (5, 710), (0, 0, 255), blink=True)
         if args.debug:
-            frame_user = display_debug_text(frame_user)
+            frame_user = display_text(frame_user, 'DEBUG MODE: ON', (5, 25), (0, 0, 255), blink=True)
 
         # --------------------------- READ KEY SECTION -----------------------------
         # Wait for a key to be press and grabs the value
@@ -590,7 +550,7 @@ while True:
         if (k == ord('t') or k == ord('T')) and not is_flying_send_rc_control and not args.debug:
             is_taking_off = True
             print('Takeoff...')
-            frame_user = display_taking_off_text(frame_user)
+            frame_user = display_text(frame_user, 'Taking off...', (5, 25), (0, 255, 255))
 
         if is_landing:
             for i in range(50):
@@ -604,7 +564,7 @@ while True:
         if (k == ord('l') or k == ord('L')) and is_flying_send_rc_control and not args.debug:
             is_landing = True
             print('Land...')
-            frame_user = display_landing_text(frame_user)
+            frame_user = display_text(frame_user, 'Landing...', (5, 25), (0, 255, 255))
 
         # Press spacebar to enter override mode
         if k == 32 and is_flying_send_rc_control:
