@@ -105,7 +105,7 @@ def display_text(frame, text, org, color, blink=False):
 
 def display_icons(frame, bat=True, rec=False):
     """ Display icons in the video """
-    global elapsed_time, actual_time, battery, elapsed_battery_blink
+    global elapsed_time, actual_time, battery, elapsed_battery_blink, elapsed_recording_blink
 
     if bat:
         # Display a battery in the image representing its percentage
@@ -161,7 +161,11 @@ def display_icons(frame, bat=True, rec=False):
                 elapsed_battery_blink = actual_time
 
     if rec:
-        cv2.circle(frame, (908, 7), 2, (0, 225, 255), -1)  # Put a red circle indicating its recording
+        # Blinks battery every 1 seconds
+        if 1 < actual_time - elapsed_recording_blink < 2:
+            cv2.circle(frame, (890, 15), 10, (0, 0, 255), -1)  # Put a red circle indicating its recording
+        elif actual_time - elapsed_recording_blink > 2:
+            elapsed_recording_blink = actual_time
 
     return frame
 
@@ -302,6 +306,8 @@ elapsed_time = actual_time
 elapsed_text_blink = actual_time
 # Create variables that count time to blink battery when low
 elapsed_battery_blink = actual_time
+# Create variables that count time to blink recording icon
+elapsed_recording_blink = actual_time
 
 # -<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<  DRONE CYCLE ->->->->->->->->->->->->->->->->->->->->->
 while True:
@@ -553,7 +559,7 @@ while True:
         # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
         if args.save_session:
-            frame_user = display_text(frame_user, 'REC', (858, 9), (0, 0, 0))
+            frame_user = display_text(frame_user, 'REC', (810, 25), (0, 0, 0))
             frame_user = display_icons(frame_user, bat=True, rec=True)
             writer.write(frame_original)
             writer_processed.write(frame_user)
