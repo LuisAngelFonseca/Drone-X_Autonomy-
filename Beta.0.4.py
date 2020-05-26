@@ -280,20 +280,19 @@ def get_frames_while_flying(rmax, rmin, stops):
     return list_of_stops
 
 
-def count_tomatoes(frame_read):
+def count_tomatoes(frame_read, frame_user):
     # Declaration of color variables
     # Red variables
-    min_hue_r = 140
-    max_hue_r = 180
-    min_sat_r = 80
-    max_sat_r = 180
-    min_val_r = 120
+    min_hue_r = 0
+    max_hue_r = 9
+    min_sat_r = 200
+    max_sat_r = 255
+    min_val_r = 0
     max_val_r = 255
 
     # Image pre-processing section
     # Changing the color-space
-    gray_frame = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)  # Only when compiled with default web-cam
-    hsv_frame = cv2.cvtColor(gray_frame, cv2.COLOR_RGB2HSV)
+    hsv_frame = cv2.cvtColor(frame_read, cv2.COLOR_BGR2HSV)
 
     # Blurring, eroding, dilating
     blurred_hsv = cv2.blur(hsv_frame, (5, 5))
@@ -304,33 +303,28 @@ def count_tomatoes(frame_read):
     hsv_red_mask = cv2.erode(hsv_red_mask, None, iterations=2)
     hsv_red_mask = cv2.dilate(hsv_red_mask, None, iterations=2)
 
-    # Adding the mask to the original image
-    # hsv_pnb_color_mask = cv2.bitwise_or(hsv_red_mask, hsv_green_mask)  # Adding the pink and the blue mask
-    # Making an "and" with the original frame and the mask
-    hsv_or_color_mask = cv2.bitwise_and(hsv_frame, hsv_frame, mask=hsv_red_mask)
-    bgr_color_mask = cv2.cvtColor(hsv_or_color_mask, cv2.COLOR_HSV2BGR)
-
     # Finding contours
     # Blue contours
     r_cnts = cv2.findContours(hsv_red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     r_cnts = imutils.grab_contours(r_cnts)  # Pink contours
+    t_cnts = []
 
     # Only will show contours if at least one blue contour is found
     if len(r_cnts) > 0:
-        b = max(r_cnts, key=cv2.contourArea)
-        m = cv2.moments(b)
+        # loop over the contours
+        for c in r_cnts:
+            # compute the center of the contour
+            area = cv2.contourArea(c)
+            if area > 100:
+                t_cnts.append(c)
+                M = cv2.moments(c)
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                # draw the contour and center of the shape on the image
+                cv2.drawContours(frame_user, [c], -1, (0, 255, 0), 2)
+                cv2.circle(frame_user, (cX, cY), 7, (255, 255, 255), -1)
 
-        # Checking if the detected contours actually is a circle, by calculating the centroid
-        if m["m00"] > 0:
-            # Getting the center of the contour
-            ((xb, yb), radiusb) = cv2.minEnclosingCircle(b)
-            xb = int(xb)
-            yb = int(yb)
-            center1 = (int(m["m10"] / m["m00"]), int(m["m01"] / m["m00"]))
-            cv2.circle(bgr_color_mask, (int(xb), int(yb)), int(radiusb), (0, 255, 255), 2)
-            cv2.circle(bgr_color_mask, center1, 7, (255, 255, 255), -1)
-
-    return len(r_cnts)
+    return (len(t_cnts), frame_user)
 
 
 # Setup
@@ -357,7 +351,7 @@ battery = 0
 # Grid size
 grid_size = 100
 # Radius of the object in which the drone will stop
-radius_stop = 90
+radius_stop = 40
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
@@ -641,9 +635,11 @@ while True:
         # --------------------------- TOMATO COUNTER SECTION -----------------------------
         # Get the number of tomatoes 
         if r is not None and frame_capture_list:
-            if (frame_capture_list[0] + 5) > r > (frame_capture_list[0] - 5):
-                del frame_capture_list[0]
-                tomatoes = tomatoes + count_tomatoes(frame_original)
+            # if (frame_capture_list[0] + 5) > r > (frame_capture_list[0] - 5):
+            #     del frame_capture_list[0]
+            if 35 < r < 45:
+                tomatoes = count_tomatoes(frame_original, 0)[0]
+                frame_user = count_tomatoes(frame_original, frame_user)[1]
                 print(tomatoes)
         # --------------------------- SHOW VIDEO SECTION -----------------------------
         # Display the video
