@@ -320,9 +320,9 @@ def count_tomatoes(frame_read, frame_user):
                 M = cv2.moments(c)
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
-                # draw the contour and center of the shape on the image
-                cv2.drawContours(frame_user, [c], -1, (0, 255, 0), 2)
-                cv2.circle(frame_user, (cX, cY), 7, (255, 255, 255), -1)
+                # # draw the contour and center of the shape on the image
+                # cv2.drawContours(frame_user, [c], -1, (0, 255, 0), 2)
+                # cv2.circle(frame_user, (cX, cY), 7, (255, 255, 255), -1)
 
     return (len(t_cnts), frame_user)
 
