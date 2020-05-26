@@ -249,6 +249,7 @@ class DroneX(object):
         OVERRIDE = False
         # Check tello battery before starting
         print('Solicitar Bateria ')
+        global battery
         try:
             battery = self.tello.get_battery()  # Get battery level of the drone
             if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
