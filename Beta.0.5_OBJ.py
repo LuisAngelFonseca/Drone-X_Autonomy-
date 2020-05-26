@@ -493,6 +493,7 @@ class DroneX(object):
 
             # --------------------------- MISCELLANEOUS SECTION -----------------------------
             # Save actual time
+            global actual_time
             actual_time = time.time()
             # Delay to showcase desired fps in video
 
