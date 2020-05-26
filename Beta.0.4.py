@@ -121,10 +121,11 @@ def display_icons(frame, bat=True, rec=False):
                     battery = tello.get_battery()  # Get battery level of the drone
                     if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
                         battery = int(battery)
+                        print('Se convirtio valor de bateria a int')
                     else:
-                        pass
+                        print('Bateria entrego "" o "ok"')
                 except:
-                    battery = 0
+                    print('Error al pedir bateria')
 
         # Request battery every 24 seconds in debug mode
         elif args.debug:
@@ -135,10 +136,11 @@ def display_icons(frame, bat=True, rec=False):
                     battery = tello.get_battery()  # Get battery level of the drone
                     if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
                         battery = int(battery)
+                        print('Se convirtio valor de bateria a int')
                     else:
-                        pass
+                        print('Bateria entrego "" o "ok"')
                 except:
-                    battery = 0
+                    print('Error al pedir bateria')
 
         # Display a complete battery
         if battery > 75:
@@ -283,48 +285,42 @@ def get_frames_while_flying(rmax, rmin, stops):
 def count_tomatoes(frame_read, frame_user):
     # Declaration of color variables
     # Red variables
-    min_hue_r = 0
-    max_hue_r = 9
-    min_sat_r = 200
-    max_sat_r = 255
-    min_val_r = 0
-    max_val_r = 255
+    color_lower = (15, 100, 55)
+    color_upper = (34, 255, 255)
 
-    # Image pre-processing section
-    # Changing the color-space
-    hsv_frame = cv2.cvtColor(frame_read, cv2.COLOR_BGR2HSV)
+    # Blur frame, and convert it to the HSV color space
+    blurred = cv2.GaussianBlur(frame_read, (11, 11), 0)
+    frameHSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-    # Blurring, eroding, dilating
-    blurred_hsv = cv2.blur(hsv_frame, (5, 5))
+    # Construct a mask for the color, then perform
+    # a series of erodes and dilates to remove any small
+    # blobs left in the mask
+    mask = cv2.inRange(frameHSV, color_lower, color_upper)
+    mask = cv2.erode(mask, None, iterations=2)
+    mask = cv2.dilate(mask, None, iterations=2)
 
-    # Making mask of the preprocessed image
-    hsv_red_mask = cv2.inRange(blurred_hsv, (min_hue_r, min_sat_r, min_val_r),
-                               (max_hue_r, max_sat_r, max_val_r))  # This is the blue mask
-    hsv_red_mask = cv2.erode(hsv_red_mask, None, iterations=2)
-    hsv_red_mask = cv2.dilate(hsv_red_mask, None, iterations=2)
+    # Find contours in the mask
+    contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = imutils.grab_contours(contours)
 
-    # Finding contours
-    # Blue contours
-    r_cnts = cv2.findContours(hsv_red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    r_cnts = imutils.grab_contours(r_cnts)  # Pink contours
     t_cnts = []
 
     # Only will show contours if at least one blue contour is found
-    if len(r_cnts) > 0:
+    if len(contours) > 0:
         # loop over the contours
-        for c in r_cnts:
+        for contour in contours:
             # compute the center of the contour
-            area = cv2.contourArea(c)
-            if area > 100:
-                t_cnts.append(c)
-                M = cv2.moments(c)
+            area = cv2.contourArea(contour)
+            if area > 300:
+                t_cnts.append(contour)
+                M = cv2.moments(contour)
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
                 # draw the contour and center of the shape on the image
-                cv2.drawContours(frame_user, [c], -1, (0, 255, 0), 2)
+                cv2.drawContours(frame_user, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(frame_user, (cX, cY), 7, (255, 255, 255), -1)
 
-    return (len(t_cnts), frame_user)
+    return len(t_cnts), frame_user
 
 
 # Setup
@@ -402,11 +398,16 @@ while True:
     # You change the value with the spacebar and give you the manual control of the drone
     OVERRIDE = False
     # Check tello battery before starting
-    battery = tello.get_battery()  # Get battery level of the drone
-    if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
-        battery = int(battery)
-    else:
-        pass
+    print('Solicitar Bateria ')
+    try:
+        battery = tello.get_battery()  # Get battery level of the drone
+        if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
+            battery = int(battery)
+            print('Se convirtio valor de bateria a int')
+        else:
+            print('Bateria entrego "" o "ok"')
+    except:
+        print('Error al pedir bateria')
 
     # --------------------------- DEBUG TRACKBAR SECTION -----------------------------
     # This checks if we are in the debug mode,
@@ -640,7 +641,7 @@ while True:
             if 35 < r < 45:
                 tomatoes = count_tomatoes(frame_original, 0)[0]
                 frame_user = count_tomatoes(frame_original, frame_user)[1]
-                print(tomatoes)
+                # print(tomatoes)
         # --------------------------- SHOW VIDEO SECTION -----------------------------
         # Display the video
 

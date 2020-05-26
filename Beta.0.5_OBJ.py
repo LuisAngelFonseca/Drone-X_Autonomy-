@@ -248,11 +248,16 @@ class DroneX(object):
         # You change the value with the spacebar and give you the manual control of the drone
         OVERRIDE = False
         # Check tello battery before starting
-        battery = self.tello.get_battery()  # Get battery level of the drone
-        if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
-            battery = int(battery)
-        else:
-            pass
+        print('Solicitar Bateria ')
+        try:
+            battery = self.tello.get_battery()  # Get battery level of the drone
+            if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
+                battery = int(battery)
+                print('Se convirtio valor de bateria a int')
+            else:
+                print('Bateria entrego "" o "ok"')
+        except:
+            print('Error al pedir bateria')
 
         # --------------------------- DEBUG TRACKBAR SECTION -----------------------------
         # This checks if we are in the debug mode,
@@ -529,24 +534,26 @@ class DroneX(object):
                         battery = self.tello.get_battery()  # Get battery level of the drone
                         if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
                             battery = int(battery)
+                            print('Se convirtio valor de bateria a int')
                         else:
-                            pass
+                            print('Bateria entrego "" o "ok"')
                     except:
-                        battery = 0
+                        print('Error al pedir bateria')
 
             # Request battery every 24 seconds in debug mode
             elif args.debug:
                 if actual_time - elapsed_time > 24:
                     elapsed_time = actual_time
-                    print('Solicitar Bateria Debug')
+                    print('Solicitar Bateria ')
                     try:
                         battery = self.tello.get_battery()  # Get battery level of the drone
                         if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
                             battery = int(battery)
+                            print('Se convirtio valor de bateria a int')
                         else:
-                            pass
+                            print('Bateria entrego "" o "ok"')
                     except:
-                        battery = 0
+                        print('Error al pedir bateria')
 
             # Display a complete battery
             if battery > 75:
