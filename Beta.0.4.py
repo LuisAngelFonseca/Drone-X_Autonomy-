@@ -343,7 +343,7 @@ battery = 0
 
 # Values are given in pixels for following variables
 # Grid size
-grid_size = 100
+grid_size = 60
 # Radius of the object in which the drone will stop
 radius_stop = 60
 # Tolerance range in which the drone will stop
