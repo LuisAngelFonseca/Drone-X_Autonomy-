@@ -61,19 +61,23 @@ def stackImages(scale, imgArray):
 
 
 def check_boundaries(value, tolerance, ranges, upper_or_lower):
+    """ Returns value +- tolerance"""
+
     if ranges == 0:
-        # set the boundary for hue
+        # Set the boundary for hue
         boundary = 179
     elif ranges == 1:
-        # set the boundary for saturation and value
+        # Set the boundary for saturation and value
         boundary = 255
 
     if upper_or_lower == 1:
+        # In case the sum is greater than the parameter boundary, set it to boundary
         if value + tolerance > boundary:
             value = boundary
         else:
             value = value + tolerance
     else:
+        # In case the subtraction is less than the parameter boundary, set it to boundary
         if value - tolerance < 0:
             value = 0
         else:
@@ -83,15 +87,18 @@ def check_boundaries(value, tolerance, ranges, upper_or_lower):
 
 
 def pick_color(event, x, y, flags, params):
-
+    """ Calculates HSV value from click and sets it to trackbars """
+    # Check if event was a mouse left click
     if event == cv2.EVENT_LBUTTONDOWN:
 
         # Transforms x and y coordinates of frameStack to original frame in upper left part of stack
         x = int(x*(frame.shape[1]/(frameStack.shape[1]/np.shape(stack)[1])))
         y = int(y*(frame.shape[0]/(frameStack.shape[0]/np.shape(stack)[0])))
 
+        # Checks if x and y coordinates are inside the upper left frame
         if x <= frame.shape[1] and y <= frame.shape[0]:
 
+            # Gets HSV values for pixel clicked
             pixel = frame_HSV[y, x]
 
             # HUE, SATURATION, AND VALUE (BRIGHTNESS) RANGES. TOLERANCE COULD BE ADJUSTED.
@@ -104,6 +111,7 @@ def pick_color(event, x, y, flags, params):
             val_lower = check_boundaries(pixel[2], 100, 1, 0)
             val_upper = check_boundaries(pixel[2], 100, 1, 1)
 
+            # Change trackbar position value to clicked one with tolerance
             cv2.setTrackbarPos('Hue Min', 'Color Calibration', hue_lower)
             cv2.setTrackbarPos('Hue Max', 'Color Calibration', hue_upper)
             cv2.setTrackbarPos('Sat Min', 'Color Calibration', sat_lower)
@@ -113,6 +121,9 @@ def pick_color(event, x, y, flags, params):
 
 
 def text_instructions(frame):
+    """ Draws instructions in the form of text on frame """
+
+    # All position values are hardcoded, if size is changed, they will need to be readjusted
     cv2.putText(frame, 'Select color with mouse click', (30, 15), cv2.FONT_HERSHEY_COMPLEX,
                 .5, (255, 255, 255))
     cv2.putText(frame, 'in upper left video to calibrate', (30, 35), cv2.FONT_HERSHEY_COMPLEX,
