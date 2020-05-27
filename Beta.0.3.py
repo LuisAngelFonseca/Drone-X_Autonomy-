@@ -60,6 +60,69 @@ def stackImages(scale, imgArray):
     return ver
 
 
+def check_boundaries(value, tolerance, ranges, upper_or_lower):
+    if ranges == 0:
+        # set the boundary for hue
+        boundary = 179
+    elif ranges == 1:
+        # set the boundary for saturation and value
+        boundary = 255
+
+    if upper_or_lower == 1:
+        if value + tolerance > boundary:
+            value = boundary
+        else:
+            value = value + tolerance
+    else:
+        if value - tolerance < 0:
+            value = 0
+        else:
+            value = value - tolerance
+
+    return value
+
+
+def pick_color(event, x, y, flags, params):
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+
+        # Transforms x and y coordinates of frameStack to original frame in upper left part of stack
+        x = int(x*(frame.shape[1]/(frameStack.shape[1]/np.shape(stack)[1])))
+        y = int(y*(frame.shape[0]/(frameStack.shape[0]/np.shape(stack)[0])))
+
+        if x <= frame.shape[1] and y <= frame.shape[0]:
+
+            pixel = frame_HSV[y, x]
+
+            # HUE, SATURATION, AND VALUE (BRIGHTNESS) RANGES. TOLERANCE COULD BE ADJUSTED.
+            # Set range = 0 for hue and range = 1 for saturation and brightness
+            # set upper_or_lower = 1 for upper and upper_or_lower = 0 for lower
+            hue_lower = check_boundaries(pixel[0], 9, 0, 0)
+            hue_upper = check_boundaries(pixel[0], 9, 0, 1)
+            sat_lower = check_boundaries(pixel[1], 83, 1, 0)
+            sat_upper = check_boundaries(pixel[1], 83, 1, 1)
+            val_lower = check_boundaries(pixel[2], 100, 1, 0)
+            val_upper = check_boundaries(pixel[2], 100, 1, 1)
+
+            cv2.setTrackbarPos('Hue Min', 'Color Calibration', hue_lower)
+            cv2.setTrackbarPos('Hue Max', 'Color Calibration', hue_upper)
+            cv2.setTrackbarPos('Sat Min', 'Color Calibration', sat_lower)
+            cv2.setTrackbarPos('Sat Max', 'Color Calibration', sat_upper)
+            cv2.setTrackbarPos('Val Min', 'Color Calibration', val_lower)
+            cv2.setTrackbarPos('Val Max', 'Color Calibration', val_upper)
+
+
+def text_instructions(frame):
+    cv2.putText(frame, 'Select color with mouse click', (30, 15), cv2.FONT_HERSHEY_COMPLEX,
+                .5, (255, 255, 255))
+    cv2.putText(frame, 'in upper left video to calibrate', (30, 35), cv2.FONT_HERSHEY_COMPLEX,
+                .5, (255, 255, 255))
+    cv2.putText(frame, '|', (330, 20), cv2.FONT_HERSHEY_COMPLEX,
+                .7, (255, 255, 255))
+    cv2.putText(frame, 'V', (326, 40), cv2.FONT_HERSHEY_COMPLEX,
+                .7, (255, 255, 255))
+
+
 def display_grid(frame, size, x, y):
     """ Display grid on the frame and display two lines from the center to the tracking object """
     # You can give a value to size to change the grid sizes
@@ -437,9 +500,13 @@ while True:
 
             frameResult = cv2.bitwise_and(frame, frame, mask=mask)
 
-            frameStack = stackImages(0.4, ([frame, frame_HSV], [mask, frameResult]))
+            stack = ([frame, frame_HSV], [mask, frameResult])
+            frameStack = stackImages(0.4, stack)
 
+            text_instructions(frameStack)
             cv2.imshow('Stacked Images', frameStack)
+
+            cv2.setMouseCallback('Stacked Images', pick_color)
 
         # --------------------------- FRAME PROCESSING SECTION -----------------------------
         # Take 4 points from the frame
