@@ -88,6 +88,9 @@ def check_boundaries(value, tolerance, ranges, upper_or_lower):
 
 def pick_color(event, x, y, flags, params):
     """ Calculates HSV value from click and sets it to trackbars """
+
+    frame, frame_HSV, stack, frameStack = params
+
     # Check if event was a mouse left click
     if event == cv2.EVENT_LBUTTONDOWN:
 
@@ -517,7 +520,7 @@ while True:
             text_instructions(frameStack)
             cv2.imshow('Stacked Images', frameStack)
 
-            cv2.setMouseCallback('Stacked Images', pick_color)
+            cv2.setMouseCallback('Stacked Images', pick_color, (frame, frame_HSV, stack, frameStack))
 
         # --------------------------- FRAME PROCESSING SECTION -----------------------------
         # Take 4 points from the frame
