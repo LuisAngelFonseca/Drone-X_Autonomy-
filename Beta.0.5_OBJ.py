@@ -35,9 +35,9 @@ FPS_vid = 10
 
 # Values are given in pixels for following variables
 # Grid size
-grid_size = 100
+grid_size = 60
 # Radius of the object in which the drone will stop
-radius_stop = 90
+radius_stop = 60
 # Tolerance range in which the drone will stop
 radius_stop_tolerance = 5
 
@@ -219,7 +219,6 @@ class DroneX(object):
         self.yaw_velocity = 0
         self.speed = 10
 
-        self.is_flying_send_rc_control = False
         self.is_landing = False
         self.is_taking_off = False
 
@@ -313,7 +312,7 @@ class DroneX(object):
 
             # --------------------------- SEND DRONE VELOCITY SECTION -----------------------------
             # Function that updates drone velocities in the override mode and autonomous mode
-            if self.is_flying_send_rc_control:
+            if self.tello.is_flying:
                 self.tello.send_rc_control(self.left_right_velocity, self.for_back_velocity, self.up_down_velocity,
                                            self.yaw_velocity)
 
@@ -390,7 +389,7 @@ class DroneX(object):
 
             # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
             if k == 27:
-                if self.is_flying_send_rc_control:
+                if self.tello.is_flying:
                     for i in range(50):
                         self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
                         time.sleep(1 / FPS)
@@ -400,11 +399,10 @@ class DroneX(object):
             if self.is_taking_off:
                 self.tello.get_battery()
                 self.tello.takeoff()
-                self.is_flying_send_rc_control = True
                 self.is_taking_off = False
 
             # Press T to take off
-            if (k == ord('t') or k == ord('T')) and not self.is_flying_send_rc_control and not args.debug:
+            if (k == ord('t') or k == ord('T')) and not self.tello.is_flying and not args.debug:
                 self.is_taking_off = True
                 print('Takeoff...')
                 frame_user = display_text(frame_user, 'Taking off...', (5, 25), (0, 255, 255))
@@ -414,17 +412,16 @@ class DroneX(object):
                     self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
                     time.sleep(1 / FPS)
                 self.tello.land()
-                self.is_flying_send_rc_control = False
                 self.is_landing = False
 
             # Press L to land
-            if (k == ord('l') or k == ord('L')) and self.is_flying_send_rc_control and not args.debug:
+            if (k == ord('l') or k == ord('L')) and self.tello.is_flying and not args.debug:
                 self.is_landing = True
                 print('Land...')
                 frame_user = display_text(frame_user, 'Landing...', (5, 25), (0, 255, 255))
 
             # Press spacebar to enter override mode
-            if k == 32 and self.is_flying_send_rc_control:
+            if k == 32 and self.tello.is_flying:
                 if not OVERRIDE:
                     OVERRIDE = True
                     print('OVERRIDE ENABLED')
@@ -466,7 +463,7 @@ class DroneX(object):
                     self.left_right_velocity = 0
 
             # --------------------------- AUTONOMOUS SECTION -----------------------------
-            if self.is_flying_send_rc_control and not OVERRIDE and not args.debug:
+            if self.tello.is_flying and not OVERRIDE and not args.debug:
                 # Eliminate pass values
                 self.left_right_velocity = 0
                 self.for_back_velocity = 0
