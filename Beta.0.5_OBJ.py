@@ -282,7 +282,7 @@ def object_detection(frame, lower_hsv, upper_hsv):
     return x, y, radius, detection, frame  # Return the position, radius of the object, and the frame
 
 
-class DroneX(object):
+class DroneX:
 
     def __init__(self):
         # Init Tello object that interacts with the Tello drone
@@ -552,10 +552,10 @@ class DroneX(object):
 
                 if detection:
                     self.yaw_velocity, self.up_down_velocity, self.for_back_velocity = self.drone_stay_close(x, y, x_1,
-                                                                                                        x_2, y_1,
-                                                                                                        y_2, r,
-                                                                                                        radius_stop,
-                                                                                                        radius_stop_tolerance)
+                                                                                                             x_2, y_1,
+                                                                                                             y_2, r,
+                                                                                                             radius_stop,
+                                                                                                             radius_stop_tolerance)
 
             # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
             # Save the video session if True
@@ -688,11 +688,22 @@ class DroneX(object):
         return self.yaw_velocity, self.up_down_velocity, self.for_back_velocity
 
 
+class DesktopL:
+    drone = None
+
+    def __init__(self):
+        self.drone = DroneX()
+
+    def run(self):
+        self.drone.run()
+
+
+
 def main():
-    Drone = DroneX()
+    drone = DesktopL()
 
     # Run Drone-X
-    Drone.run()
+    drone.run()
 
 
 if __name__ == '__main__':
