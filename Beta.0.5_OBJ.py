@@ -295,11 +295,20 @@ class DroneX:
         self.yaw_velocity = 0
         self.speed = 10
 
+        self.__event = 0
+
         self.is_landing = False
         self.is_taking_off = False
+        self.drone_continuous_cycle = True
+        self.OVERRIDE = False
 
-    def run(self):
+    def get_event(self):
+        return self.__event
 
+    def set_event(self, val):
+        self.__event = val
+
+    def initializer(self):
         if not self.tello.connect():
             print("Tello not connected")
             return
@@ -318,10 +327,7 @@ class DroneX:
             return
 
         # --------------------------- VARIABLE DECLARATION SECTION -----------------------------
-        # Infinite cycle to run code
-        drone_continuous_cycle = True
-        # You change the value with the spacebar and give you the manual control of the drone
-        OVERRIDE = False
+
         # Check tello battery before starting
         print('Solicitar Bateria ')
         global battery
@@ -382,215 +388,204 @@ class DroneX:
                                                cv2.VideoWriter_fourcc(*'XVID'),
                                                FPS_vid, (width, height))
 
+    def run(self):
+
+
         # -<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-< CONTINUOUS DRONE CYCLE ->->->->->->->->->->->->->->->->->->->->->
 
-        while drone_continuous_cycle:
+        # --------------------------- SEND DRONE VELOCITY SECTION -----------------------------
+        # Function that updates drone velocities in the override mode and autonomous mode
+        if self.tello.is_flying:
+            self.tello.send_rc_control(self.left_right_velocity, self.for_back_velocity, self.up_down_velocity,
+                                       self.yaw_velocity)
 
-            # --------------------------- SEND DRONE VELOCITY SECTION -----------------------------
-            # Function that updates drone velocities in the override mode and autonomous mode
+        # Update frame
+        frame_original = self.frame_read.frame
+        frame = frame_original.copy()
+
+        # --------------------------- FRAME READ SECTION -----------------------------
+        # If there is no frame, do not read the actual frame
+        if self.frame_read.stopped:
+            self.frame_read.stop()
+            self.drone_continuous_cycle = False
+
+
+        # --------------------------- DEBUG CALIBRATION SECTION -----------------------------
+        # Update the trackbars HSV mask and apply the erosion and dilation
+        if args.debug:
+            # Read all the trackbars positions
+            h_min = cv2.getTrackbarPos('Hue Min', 'Color Calibration')
+            h_max = cv2.getTrackbarPos('Hue Max', 'Color Calibration')
+            s_min = cv2.getTrackbarPos('Sat Min', 'Color Calibration')
+            s_max = cv2.getTrackbarPos('Sat Max', 'Color Calibration')
+            v_min = cv2.getTrackbarPos('Val Min', 'Color Calibration')
+            v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
+            erosion = cv2.getTrackbarPos('Erosion', 'Color Calibration')
+            dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
+
+            # Apply a Gaussian Blur to the image in order to reduce detail
+            blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+            # Create HSV image, passing it from BGR
+            frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+
+            lower_hsv: ndarray = np.array([h_min, s_min, v_min])
+            upper_hsv = np.array([h_max, s_max, v_max])
+
+            mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
+            mask = cv2.erode(mask, None, iterations=erosion)
+            mask = cv2.dilate(mask, None, iterations=dilation)
+
+            frameResult = cv2.bitwise_and(frame, frame, mask=mask)
+
+            stack = ([frame, frame_HSV], [mask, frameResult])
+            frameStack = stackImages(0.4, stack)
+
+            text_instructions(frameStack)
+            cv2.imshow('Stacked Images', frameStack)
+
+            cv2.setMouseCallback('Stacked Images', pick_color, (frame, frame_HSV, stack, frameStack))
+
+        # --------------------------- FRAME PROCESSING SECTION -----------------------------
+        # Take 4 points from the frame
+        pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
+        # Make the new screen size
+        pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
+
+        # Change the perspective of the frame to counteract the camera angle
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
+        frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
+
+        # If we are in debug mode, send the trackbars values to the object detection algorithm
+        if args.debug:
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
+        else:
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
+
+        # Display grid in the actual frame
+        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
+
+        # Display battery, logo and mode in the video
+        frame_user = self.display_icons(display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)), bat=True)
+        if self.OVERRIDE:
+            frame_user = display_text(frame_user, 'OVERRIDE MODE: ON', (5, 710), (0, 0, 255), blink=True)
+        if args.debug:
+            frame_user = display_text(frame_user, 'DEBUG MODE: ON', (5, 25), (0, 0, 255), blink=True)
+
+        # --------------------------- READ KEY SECTION -----------------------------
+        # Wait for a key to be press and grabs the value
+        # k = cv2.waitKey(20)
+        self.set_event(0)
+        time.sleep(0.020)
+        k = self.get_event()
+
+        # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
+        if k == 27:
             if self.tello.is_flying:
-                self.tello.send_rc_control(self.left_right_velocity, self.for_back_velocity, self.up_down_velocity,
-                                           self.yaw_velocity)
-
-            # --------------------------- FRAME READ SECTION -----------------------------
-            # If there is no frame, do not read the actual frame
-            if frame_read.stopped:
-                frame_read.stop()
-                break
-
-            # Update frame
-            frame_original = frame_read.frame
-            frame = frame_original.copy()
-
-            # --------------------------- DEBUG CALIBRATION SECTION -----------------------------
-            # Update the trackbars HSV mask and apply the erosion and dilation
-            if args.debug:
-                # Read all the trackbars positions
-                h_min = cv2.getTrackbarPos('Hue Min', 'Color Calibration')
-                h_max = cv2.getTrackbarPos('Hue Max', 'Color Calibration')
-                s_min = cv2.getTrackbarPos('Sat Min', 'Color Calibration')
-                s_max = cv2.getTrackbarPos('Sat Max', 'Color Calibration')
-                v_min = cv2.getTrackbarPos('Val Min', 'Color Calibration')
-                v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
-                erosion = cv2.getTrackbarPos('Erosion', 'Color Calibration')
-                dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
-
-                # Apply a Gaussian Blur to the image in order to reduce detail
-                blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-                # Create HSV image, passing it from BGR
-                frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
-                lower_hsv: ndarray = np.array([h_min, s_min, v_min])
-                upper_hsv = np.array([h_max, s_max, v_max])
-
-                mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
-                mask = cv2.erode(mask, None, iterations=erosion)
-                mask = cv2.dilate(mask, None, iterations=dilation)
-
-                frameResult = cv2.bitwise_and(frame, frame, mask=mask)
-
-                stack = ([frame, frame_HSV], [mask, frameResult])
-                frameStack = stackImages(0.4, stack)
-
-                text_instructions(frameStack)
-                cv2.imshow('Stacked Images', frameStack)
-
-                cv2.setMouseCallback('Stacked Images', pick_color, (frame, frame_HSV, stack, frameStack))
-
-            # --------------------------- FRAME PROCESSING SECTION -----------------------------
-            # Take 4 points from the frame
-            pts1 = np.float32([[140, 0], [820, 0], [0, 666], [960, 660]])
-            # Make the new screen size
-            pts2 = np.float32([[0, 0], [960, 0], [0, 720], [960, 720]])
-
-            # Change the perspective of the frame to counteract the camera angle
-            matrix = cv2.getPerspectiveTransform(pts1, pts2)
-            frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
-
-            # If we are in debug mode, send the trackbars values to the object detection algorithm
-            if args.debug:
-                x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
-            else:
-                x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
-
-            # Display grid in the actual frame
-            x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
-
-            # Display battery, logo and mode in the video
-            frame_user = self.display_icons(display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)), bat=True)
-            if OVERRIDE:
-                frame_user = display_text(frame_user, 'OVERRIDE MODE: ON', (5, 710), (0, 0, 255), blink=True)
-            if args.debug:
-                frame_user = display_text(frame_user, 'DEBUG MODE: ON', (5, 25), (0, 0, 255), blink=True)
-
-            # --------------------------- READ KEY SECTION -----------------------------
-            # Wait for a key to be press and grabs the value
-            k = cv2.waitKey(20)
-
-            # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
-            if k == 27:
-                if self.tello.is_flying:
-                    for i in range(50):
-                        self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
-                        time.sleep(1 / FPS)
-                drone_continuous_cycle = False
-                break
-
-            if self.is_taking_off:
-                self.tello.get_battery()
-                self.tello.takeoff()
-                self.is_taking_off = False
-
-            # Press T to take off
-            if (k == ord('t') or k == ord('T')) and not self.tello.is_flying and not args.debug:
-                self.is_taking_off = True
-                print('Takeoff...')
-                frame_user = display_text(frame_user, 'Taking off...', (5, 25), (0, 255, 255))
-
-            if self.is_landing:
                 for i in range(50):
                     self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
                     time.sleep(1 / FPS)
-                self.tello.land()
-                self.is_landing = False
+            drone_continuous_cycle = False
 
-            # Press L to land
-            if (k == ord('l') or k == ord('L')) and self.tello.is_flying and not args.debug:
-                self.is_landing = True
-                print('Land...')
-                frame_user = display_text(frame_user, 'Landing...', (5, 25), (0, 255, 255))
+        if self.is_taking_off:
+            self.tello.get_battery()
+            self.tello.takeoff()
+            self.is_taking_off = False
 
-            # Press spacebar to enter override mode
-            if k == 32 and self.tello.is_flying:
-                if not OVERRIDE:
-                    OVERRIDE = True
-                    print('OVERRIDE ENABLED')
-                else:
-                    OVERRIDE = False
-                    print('OVERRIDE DISABLED')
+        # Press T to take off
+        if (k == ord('t') or k == ord('T')) and not self.tello.is_flying and not args.debug:
+            self.is_taking_off = True
+            print('Takeoff...')
+            frame_user = display_text(frame_user, 'Taking off...', (5, 25), (0, 255, 255))
 
-            if OVERRIDE:
-                # W to fly forward and S to fly back
-                if k == ord('w') or k == ord('W'):
-                    self.for_back_velocity = int(S * oSpeed)
-                elif k == ord('s') or k == ord('S'):
-                    self.for_back_velocity = -int(S * oSpeed)
-                else:
-                    self.for_back_velocity = 0
+        if self.is_landing:
+            for i in range(50):
+                self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
+                time.sleep(1 / FPS)
+            self.tello.land()
+            self.is_landing = False
 
-                #  C to fly clockwise and Z to fly counter clockwise
-                if k == ord('c') or k == ord('C'):
-                    self.yaw_velocity = int(S * oSpeed)
-                elif k == ord('z') or k == ord('Z'):
-                    self.yaw_velocity = -int(S * oSpeed)
-                else:
-                    self.yaw_velocity = 0
+        # Press L to land
+        if (k == ord('l') or k == ord('L')) and self.tello.is_flying and not args.debug:
+            self.is_landing = True
+            print('Land...')
+            frame_user = display_text(frame_user, 'Landing...', (5, 25), (0, 255, 255))
 
-                # Q to fly up and E to fly down
-                if k == ord('q') or k == ord('Q'):
-                    self.up_down_velocity = int(S * oSpeed)
-                elif k == ord('e') or k == ord('E'):
-                    self.up_down_velocity = -int(S * oSpeed)
-                else:
-                    self.up_down_velocity = 0
+        # Press spacebar to enter override mode
+        if k == 32 and self.tello.is_flying:
+            if not self.OVERRIDE:
+                self.OVERRIDE = True
+                print('OVERRIDE ENABLED')
+            else:
+                self.OVERRIDE = False
+                print('OVERRIDE DISABLED')
 
-                # A to fly left and D to fly right
-                if k == ord('d') or k == ord('D'):
-                    self.left_right_velocity = int(S * oSpeed)
-                elif k == ord('a') or k == ord('A'):
-                    self.left_right_velocity = -int(S * oSpeed)
-                else:
-                    self.left_right_velocity = 0
-
-            # --------------------------- AUTONOMOUS SECTION -----------------------------
-            if self.tello.is_flying and not OVERRIDE and not args.debug:
-                # Eliminate pass values
-                self.left_right_velocity = 0
+        if self.OVERRIDE:
+            # W to fly forward and S to fly back
+            if k == ord('w') or k == ord('W'):
+                self.for_back_velocity = int(S * oSpeed)
+            elif k == ord('s') or k == ord('S'):
+                self.for_back_velocity = -int(S * oSpeed)
+            else:
                 self.for_back_velocity = 0
-                self.up_down_velocity = 0
+
+            #  C to fly clockwise and Z to fly counter clockwise
+            if k == ord('c') or k == ord('C'):
+                self.yaw_velocity = int(S * oSpeed)
+            elif k == ord('z') or k == ord('Z'):
+                self.yaw_velocity = -int(S * oSpeed)
+            else:
                 self.yaw_velocity = 0
 
-                if detection:
-                    self.yaw_velocity, self.up_down_velocity, self.for_back_velocity = self.drone_stay_close(x, y, x_1,
-                                                                                                             x_2, y_1,
-                                                                                                             y_2, r,
-                                                                                                             radius_stop,
-                                                                                                             radius_stop_tolerance)
+            # Q to fly up and E to fly down
+            if k == ord('q') or k == ord('Q'):
+                self.up_down_velocity = int(S * oSpeed)
+            elif k == ord('e') or k == ord('E'):
+                self.up_down_velocity = -int(S * oSpeed)
+            else:
+                self.up_down_velocity = 0
 
-            # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
-            # Save the video session if True
-            if args.save_session:
-                frame_user = display_text(frame_user, 'REC', (810, 25), (0, 0, 0))
-                frame_user = self.display_icons(frame_user, bat=True, rec=True)
-                writer.write(frame_original)
-                writer_processed.write(frame_user)
+            # A to fly left and D to fly right
+            if k == ord('d') or k == ord('D'):
+                self.left_right_velocity = int(S * oSpeed)
+            elif k == ord('a') or k == ord('A'):
+                self.left_right_velocity = -int(S * oSpeed)
+            else:
+                self.left_right_velocity = 0
 
-            # --------------------------- SHOW VIDEO SECTION -----------------------------
-            # Display the video
-            cv2.imshow('Drone X', frame_user)
+        # --------------------------- AUTONOMOUS SECTION -----------------------------
+        if self.tello.is_flying and not self.OVERRIDE and not args.debug:
+            # Eliminate pass values
+            self.left_right_velocity = 0
+            self.for_back_velocity = 0
+            self.up_down_velocity = 0
+            self.yaw_velocity = 0
 
-            # --------------------------- MISCELLANEOUS SECTION -----------------------------
-            # Save actual time
-            global actual_time
-            actual_time = time.time()
-            # Delay to showcase desired fps in video
+            if detection:
+                self.yaw_velocity, self.up_down_velocity, self.for_back_velocity = self.drone_stay_close(x, y, x_1,
+                                                                                                         x_2, y_1,
+                                                                                                         y_2, r,
+                                                                                                         radius_stop,
+                                                                                                         radius_stop_tolerance)
 
-            time.sleep(1 / FPS)
+        # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
+        # Save the video session if True
+        if args.save_session:
+            frame_user = display_text(frame_user, 'REC', (810, 25), (0, 0, 0))
+            frame_user = self.display_icons(frame_user, bat=True, rec=True)
+            writer.write(frame_original)
+            writer_processed.write(frame_user)
 
-        # On exit, print the battery
-        self.tello.get_battery()
+        # --------------------------- SHOW VIDEO SECTION -----------------------------
+        # Display the video
+        cv2.imshow('Drone X', frame_user)
 
-        # When everything done, release the capture
-        cv2.destroyAllWindows()
+        # --------------------------- MISCELLANEOUS SECTION -----------------------------
+        # Save actual time
+        global actual_time
+        actual_time = time.time()
+        # Delay to showcase desired fps in video
 
-        # Call it always before finishing. I deallocate resources.
-        self.tello.end()
-
-    # def update(self):
-    #     """ Update routine. Send velocities to Tello."""
-    #     if self.send_rc_control:
-    #         self.tello.send_rc_control(self.left_right_velocity, self.for_back_velocity, self.up_down_velocity,
-    #                                    self.yaw_velocity)
+        time.sleep(1 / FPS)
 
     def callback(self, x):
         pass
@@ -695,7 +690,20 @@ class DesktopL:
         self.drone = DroneX()
 
     def run(self):
-        self.drone.run()
+        self.drone.initializer()
+
+        while self.drone.drone_continuous_cycle:
+            self.drone.set_event(cv2.waitKey(20))
+            self.drone.run()
+
+        # On exit, print the battery
+        self.drone.tello.get_battery()
+
+        # When everything done, release the capture
+        self.drone.cv2.destroyAllWindows()
+
+        # Call it always before finishing. I deallocate resources.
+        self.drone.tello.end()
 
 
 
