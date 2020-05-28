@@ -400,6 +400,7 @@ class DroneX:
                                        self.yaw_velocity)
 
         # Update frame
+        self.frame_read = self.tello.get_frame_read()
         frame_original = self.frame_read.frame
         frame = frame_original.copy()
 
@@ -474,8 +475,8 @@ class DroneX:
         # --------------------------- READ KEY SECTION -----------------------------
         # Wait for a key to be press and grabs the value
         # k = cv2.waitKey(20)
-        self.set_event(0)
-        time.sleep(0.020)
+        # self.set_event(0)
+        # time.sleep(0.020)
         k = self.get_event()
 
         # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
@@ -484,7 +485,7 @@ class DroneX:
                 for i in range(50):
                     self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
                     time.sleep(1 / FPS)
-            drone_continuous_cycle = False
+            self.drone_continuous_cycle = False
 
         if self.is_taking_off:
             self.tello.get_battery()
@@ -693,14 +694,15 @@ class DesktopL:
         self.drone.initializer()
 
         while self.drone.drone_continuous_cycle:
-            self.drone.set_event(cv2.waitKey(20))
+            k = cv2.waitKey(20)
+            self.drone.set_event(val=k)
             self.drone.run()
 
         # On exit, print the battery
         self.drone.tello.get_battery()
 
         # When everything done, release the capture
-        self.drone.cv2.destroyAllWindows()
+        cv2.destroyAllWindows()
 
         # Call it always before finishing. I deallocate resources.
         self.drone.tello.end()
