@@ -2,22 +2,10 @@ from djitellopy import Tello
 import cv2
 import numpy as np
 import time
-import argparse
 import imutils
 import math
 import os
 import datetime
-from numpy.core.multiarray import ndarray
-
-# argparse stuff
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, add_help=False)
-parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
-                    help='** = required')
-parser.add_argument('-D', "--debug", action='store_true',
-                    help='add the -D flag to enable debug mode. Everything works the same, but no commands will be sent to the drone')
-parser.add_argument('-ss', "--save_session", action='store_true',
-                    help='add the -ss flag to save your sessions in order to have your tello sesions recorded')
-args = parser.parse_args()
 
 # Speed of the drone
 S = 40
@@ -206,82 +194,6 @@ def display_text(frame, text, org, color, blink=False):
     return frame  # Return the frame with the text
 
 
-def object_detection(frame, lower_hsv, upper_hsv):
-    """ Track the color in the frame """
-
-    # If mode debug is active, make lower and upper parameters
-    # be the ones from the trackbars
-    if args.debug:
-        color_lower = lower_hsv
-        color_upper = upper_hsv
-
-    # Else, use the lower and upper hardcoded parameters
-    else:
-        # Color range of wanted object
-        color_lower = (90, 80, 55)
-        color_upper = (107, 251, 255)
-        # color_lower = (76, 96, 0)
-        # color_upper = (129, 255, 255)
-
-    # Blur frame, and convert it to the HSV color space
-    blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-    frameHSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
-    # Construct a mask for the color, then perform
-    # a series of erodes and dilates to remove any small
-    # blobs left in the mask
-    mask = cv2.inRange(frameHSV, color_lower, color_upper)
-    mask = cv2.erode(mask, None, iterations=1)
-    mask = cv2.dilate(mask, None, iterations=5)
-
-    # Find contours in the mask
-    contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = imutils.grab_contours(contours)
-
-    # Initialize variables
-    contours_circles = []  # Will contain contours with circularity
-    center = None  # Will contain x and y coordinates of objects
-
-    # Only proceed if at least one contour was found
-    if len(contours) > 0:
-        # Go through every contour and check circularity,
-        # if it falls between the range, append it
-        for contour in contours:
-            perimeter = cv2.arcLength(contour, True)
-            area = cv2.contourArea(contour)
-            circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
-            if 0.85 < circularity < 1.05:
-                contours_circles.append(contour)
-
-    # Only proceed if at least one contour with circularity was found
-    if len(contours_circles) > 0:
-        # find the largest contour in the mask, then use
-        # it to compute the radius and centroid
-        max_contour = max(contours_circles, key=cv2.contourArea)
-        radius = cv2.minEnclosingCircle(max_contour)[1]
-        M = cv2.moments(max_contour)
-
-        # Check if the computed radius meets a minimum size
-        if radius > 5:
-            # Object has been detected!, get center coordinates,
-            # and draw a circle in the frame to visualize detection
-            detection = True
-            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-            x, y = center
-            # draw the circle and centroid on the frame
-            cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
-            cv2.circle(frame, center, 5, (0, 0, 255), -1)
-
-    #  No object has been detected
-    else:
-        detection = False
-        x = None
-        y = None
-        radius = None
-
-    return x, y, radius, detection, frame  # Return the position, radius of the object, and the frame
-
-
 class DroneX:
 
     def __init__(self):
@@ -301,6 +213,8 @@ class DroneX:
         self.is_taking_off = False
         self.drone_continuous_cycle = True
         self.OVERRIDE = False
+        self.debug = False
+        self.save_session = False
 
         self.frame_read = None
         self.writer = None
@@ -347,7 +261,7 @@ class DroneX:
 
         # --------------------------- DEBUG TRACKBAR SECTION -----------------------------
         # This checks if we are in the debug mode,
-        if args.debug:
+        if self.debug:
             # Start debug mode, to calibrate de HSV values
             print('DEBUG MODE ENABLED!')
             # create trackbars for color change
@@ -372,7 +286,7 @@ class DroneX:
         # Take the original frame for the video capture of the session
         frame_original = self.frame_read.frame
         # Check if save session mode is on
-        if args.save_session:
+        if self.save_session:
 
             # If we are to save our sessions, we need to make sure the proper directories exist
             ddir = "Sessions"
@@ -414,7 +328,7 @@ class DroneX:
 
         # --------------------------- DEBUG CALIBRATION SECTION -----------------------------
         # Update the trackbars HSV mask and apply the erosion and dilation
-        if args.debug:
+        if self.debug:
             # Read all the trackbars positions
             h_min = cv2.getTrackbarPos('Hue Min', 'Color Calibration')
             h_max = cv2.getTrackbarPos('Hue Max', 'Color Calibration')
@@ -458,10 +372,10 @@ class DroneX:
         frame_perspective = cv2.warpPerspective(frame, matrix, (960, 720))
 
         # If we are in debug mode, send the trackbars values to the object detection algorithm
-        if args.debug:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
+        if self.debug:
+            x, y, r, detection, frame_processed = self.object_detection(frame_perspective, lower_hsv, upper_hsv)
         else:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
+            x, y, r, detection, frame_processed = self.object_detection(frame_perspective, 0, 0)
 
         # Display grid in the actual frame
         x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
@@ -470,7 +384,7 @@ class DroneX:
         frame_user = self.display_icons(display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)), bat=True)
         if self.OVERRIDE:
             frame_user = display_text(frame_user, 'OVERRIDE MODE: ON', (5, 710), (0, 0, 255), blink=True)
-        if args.debug:
+        if self.debug:
             frame_user = display_text(frame_user, 'DEBUG MODE: ON', (5, 25), (0, 0, 255), blink=True)
 
         # --------------------------- READ KEY SECTION -----------------------------
@@ -494,7 +408,7 @@ class DroneX:
             self.is_taking_off = False
 
         # Press T to take off
-        if (k == ord('t') or k == ord('T')) and not self.tello.is_flying and not args.debug:
+        if (k == ord('t') or k == ord('T')) and not self.tello.is_flying and not self.debug:
             self.is_taking_off = True
             print('Takeoff...')
             frame_user = display_text(frame_user, 'Taking off...', (5, 25), (0, 255, 255))
@@ -507,7 +421,7 @@ class DroneX:
             self.is_landing = False
 
         # Press L to land
-        if (k == ord('l') or k == ord('L')) and self.tello.is_flying and not args.debug:
+        if (k == ord('l') or k == ord('L')) and self.tello.is_flying and not self.debug:
             self.is_landing = True
             print('Land...')
             frame_user = display_text(frame_user, 'Landing...', (5, 25), (0, 255, 255))
@@ -555,7 +469,7 @@ class DroneX:
                 self.left_right_velocity = 0
 
         # --------------------------- AUTONOMOUS SECTION -----------------------------
-        if self.tello.is_flying and not self.OVERRIDE and not args.debug:
+        if self.tello.is_flying and not self.OVERRIDE and not self.debug:
             # Eliminate pass values
             self.left_right_velocity = 0
             self.for_back_velocity = 0
@@ -571,7 +485,7 @@ class DroneX:
 
         # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
-        if args.save_session:
+        if self.save_session:
             frame_user = display_text(frame_user, 'REC', (810, 25), (0, 0, 0))
             frame_user = self.display_icons(frame_user, bat=True, rec=True)
             self.writer.write(frame_original)
@@ -601,7 +515,7 @@ class DroneX:
             cv2.rectangle(frame, pt1=(950, 9), pt2=(955, 21), color=(255, 255, 255), thickness=2)
 
             # Request battery every 15 seconds in autonomous mode
-            if not args.debug:
+            if not self.debug:
                 if actual_time - elapsed_time > 15:
                     elapsed_time = actual_time
                     print('Solicitar Bateria ')
@@ -616,7 +530,7 @@ class DroneX:
                         print('Error al pedir bateria')
 
             # Request battery every 24 seconds in debug mode
-            elif args.debug:
+            elif self.debug:
                 if actual_time - elapsed_time > 24:
                     elapsed_time = actual_time
                     print('Solicitar Bateria ')
@@ -659,6 +573,81 @@ class DroneX:
 
         return frame
 
+    def object_detection(self, frame, lower_hsv, upper_hsv):
+        """ Track the color in the frame """
+
+        # If mode debug is active, make lower and upper parameters
+        # be the ones from the trackbars
+        if self.debug:
+            color_lower = lower_hsv
+            color_upper = upper_hsv
+
+        # Else, use the lower and upper hardcoded parameters
+        else:
+            # Color range of wanted object
+            color_lower = (90, 80, 55)
+            color_upper = (107, 251, 255)
+            # color_lower = (76, 96, 0)
+            # color_upper = (129, 255, 255)
+
+        # Blur frame, and convert it to the HSV color space
+        blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+        frameHSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+
+        # Construct a mask for the color, then perform
+        # a series of erodes and dilates to remove any small
+        # blobs left in the mask
+        mask = cv2.inRange(frameHSV, color_lower, color_upper)
+        mask = cv2.erode(mask, None, iterations=1)
+        mask = cv2.dilate(mask, None, iterations=5)
+
+        # Find contours in the mask
+        contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = imutils.grab_contours(contours)
+
+        # Initialize variables
+        contours_circles = []  # Will contain contours with circularity
+        center = None  # Will contain x and y coordinates of objects
+
+        # Only proceed if at least one contour was found
+        if len(contours) > 0:
+            # Go through every contour and check circularity,
+            # if it falls between the range, append it
+            for contour in contours:
+                perimeter = cv2.arcLength(contour, True)
+                area = cv2.contourArea(contour)
+                circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
+                if 0.85 < circularity < 1.05:
+                    contours_circles.append(contour)
+
+        # Only proceed if at least one contour with circularity was found
+        if len(contours_circles) > 0:
+            # find the largest contour in the mask, then use
+            # it to compute the radius and centroid
+            max_contour = max(contours_circles, key=cv2.contourArea)
+            radius = cv2.minEnclosingCircle(max_contour)[1]
+            M = cv2.moments(max_contour)
+
+            # Check if the computed radius meets a minimum size
+            if radius > 5:
+                # Object has been detected!, get center coordinates,
+                # and draw a circle in the frame to visualize detection
+                detection = True
+                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                x, y = center
+                # draw the circle and centroid on the frame
+                cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
+                cv2.circle(frame, center, 5, (0, 0, 255), -1)
+
+        #  No object has been detected
+        else:
+            detection = False
+            x = None
+            y = None
+            radius = None
+
+        return x, y, radius, detection, frame  # Return the position, radius of the object, and the frame
+
     def drone_stay_close(self, x, y, limit_x1, limit_x2, limit_y1, limit_y2, radius, distance_radius, tolerance):
         """
         Control velocities to track object, take x and y for the position of the target,
@@ -684,13 +673,15 @@ class DroneX:
         return self.yaw_velocity, self.up_down_velocity, self.for_back_velocity
 
 
-class DesktopL:
+class Desktop:
     drone = None
 
     def __init__(self):
         self.drone = DroneX()
 
     def run(self):
+        self.drone.debug = True
+        self.drone.save_session = True
         self.drone.initializer()
 
         while self.drone.drone_continuous_cycle:
@@ -709,7 +700,7 @@ class DesktopL:
 
 
 def main():
-    drone = DesktopL()
+    drone = Desktop()
 
     # Run Drone-X
     drone.run()
