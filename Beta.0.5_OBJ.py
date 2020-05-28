@@ -302,6 +302,10 @@ class DroneX:
         self.drone_continuous_cycle = True
         self.OVERRIDE = False
 
+        self.frame_read = None
+        self.writer = None
+        self.writer_processed = None
+
     def get_event(self):
         return self.__event
 
@@ -364,9 +368,9 @@ class DroneX:
 
         # --------------------------- SAVE SESSION SECTION -----------------------------
         # Capture a frame from drone camera
-        frame_read = self.tello.get_frame_read()
+        self.frame_read = self.tello.get_frame_read()
         # Take the original frame for the video capture of the session
-        frame_original = frame_read.frame
+        frame_original = self.frame_read.frame
         # Check if save session mode is on
         if args.save_session:
 
@@ -382,14 +386,13 @@ class DroneX:
             width = frame_original.shape[1]
             height = frame_original.shape[0]
             # We create two writer objects that create the video sessions
-            writer = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
-                                     FPS_vid, (width, height))
-            writer_processed = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir),
-                                               cv2.VideoWriter_fourcc(*'XVID'),
-                                               FPS_vid, (width, height))
+            self.writer = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
+                                          FPS_vid, (width, height))
+            self.writer_processed = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir),
+                                                    cv2.VideoWriter_fourcc(*'XVID'),
+                                                    FPS_vid, (width, height))
 
     def run(self):
-
 
         # -<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-< CONTINUOUS DRONE CYCLE ->->->->->->->->->->->->->->->->->->->->->
 
@@ -399,17 +402,15 @@ class DroneX:
             self.tello.send_rc_control(self.left_right_velocity, self.for_back_velocity, self.up_down_velocity,
                                        self.yaw_velocity)
 
-        # Update frame
-        self.frame_read = self.tello.get_frame_read()
-        frame_original = self.frame_read.frame
-        frame = frame_original.copy()
-
         # --------------------------- FRAME READ SECTION -----------------------------
         # If there is no frame, do not read the actual frame
         if self.frame_read.stopped:
             self.frame_read.stop()
             self.drone_continuous_cycle = False
 
+        # Update frame
+        frame_original = self.frame_read.frame
+        frame = frame_original.copy()
 
         # --------------------------- DEBUG CALIBRATION SECTION -----------------------------
         # Update the trackbars HSV mask and apply the erosion and dilation
@@ -429,7 +430,7 @@ class DroneX:
             # Create HSV image, passing it from BGR
             frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-            lower_hsv: ndarray = np.array([h_min, s_min, v_min])
+            lower_hsv = np.array([h_min, s_min, v_min])
             upper_hsv = np.array([h_max, s_max, v_max])
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
@@ -573,8 +574,8 @@ class DroneX:
         if args.save_session:
             frame_user = display_text(frame_user, 'REC', (810, 25), (0, 0, 0))
             frame_user = self.display_icons(frame_user, bat=True, rec=True)
-            writer.write(frame_original)
-            writer_processed.write(frame_user)
+            self.writer.write(frame_original)
+            self.writer_processed.write(frame_user)
 
         # --------------------------- SHOW VIDEO SECTION -----------------------------
         # Display the video
@@ -585,7 +586,6 @@ class DroneX:
         global actual_time
         actual_time = time.time()
         # Delay to showcase desired fps in video
-
         time.sleep(1 / FPS)
 
     def callback(self, x):
@@ -706,7 +706,6 @@ class DesktopL:
 
         # Call it always before finishing. I deallocate resources.
         self.drone.tello.end()
-
 
 
 def main():
