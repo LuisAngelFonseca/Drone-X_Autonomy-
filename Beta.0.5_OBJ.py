@@ -7,38 +7,6 @@ import math
 import os
 import datetime
 
-# Speed of the drone
-S = 40
-# Speed factor that increase the value for override
-oSpeed = 1
-# Battery value
-battery = 0
-
-# Frames per second of the pygame window display
-FPS = 30
-# Frames per second of the stream
-FPS = 25
-# Frames per second for the video capture
-FPS_vid = 10
-
-# Values are given in pixels for following variables
-# Grid size
-grid_size = 60
-# Radius of the object in which the drone will stop
-radius_stop = 60
-# Tolerance range in which the drone will stop
-radius_stop_tolerance = 5
-
-# Create variables that counts time
-actual_time = time.time()
-elapsed_time = actual_time
-# Create variables that count time to blink text
-elapsed_text_blink = actual_time
-# Create variables that count time to blink battery when low
-elapsed_battery_blink = actual_time
-# Create variables that count time to blink recording icon
-elapsed_recording_blink = actual_time
-
 
 def stackImages(scale, imgArray):
     """ This function is for the debug mode that allows to have 4 images stack in the same window """
@@ -172,31 +140,44 @@ def display_grid(frame, size, x, y):
     return x1, x2, y1, y2, frame  # Return the position of each line and the frame
 
 
-def display_text(frame, text, org, color, blink=False):
-    """ Display text in the video """
-    global actual_time, elapsed_text_blink
-
-    font = cv2.FONT_ITALIC
-    #  Check if the text is needed to blink
-    if blink:
-        # This is to make the text blink one second on, one second off
-        if 1 < actual_time - elapsed_text_blink < 2:
-            cv2.putText(frame, text=text, org=org, fontFace=font, fontScale=1, color=color,
-                        thickness=2, lineType=cv2.LINE_8)
-        elif actual_time - elapsed_text_blink > 2:
-            elapsed_text_blink = actual_time
-
-    #  Display normal text is needed to blink
-    else:
-        cv2.putText(frame, text=text, org=org, fontFace=font, fontScale=1, color=color,
-                    thickness=2, lineType=cv2.LINE_8)
-
-    return frame  # Return the frame with the text
-
-
 class DroneX:
 
     def __init__(self):
+
+        # ----- CONSTANTS -----
+        # Speed of the drone
+        self.S = 40
+        # Speed factor that increase the value for override
+        self.oSpeed = 1
+        # Battery value
+        self.battery = 0
+
+        # Frames per second of the pygame window display
+        self.FPS = 30
+        # Frames per second of the stream
+        self.FPS = 25
+        # Frames per second for the video capture
+        self.FPS_vid = 10
+
+        # Values are given in pixels for following variables
+        # Grid size
+        self.grid_size = 60
+        # Radius of the object in which the drone will stop
+        self.radius_stop = 60
+        # Tolerance range in which the drone will stop
+        self.radius_stop_tolerance = 5
+
+        # Create variables that counts time
+        self.actual_time = time.time()
+        self.elapsed_time = self.actual_time
+        # Create variables that count time to blink text
+        self.elapsed_text_blink = self.actual_time
+        # Create variables that count time to blink battery when low
+        self.elapsed_battery_blink = self.actual_time
+        # Create variables that count time to blink recording icon
+        self.elapsed_recording_blink = self.actual_time
+
+        # ----- VARIABLES -----
         # Init Tello object that interacts with the Tello drone
         self.tello = Tello()
 
@@ -248,11 +229,10 @@ class DroneX:
 
         # Check tello battery before starting
         print('Solicitar Bateria ')
-        global battery
         try:
-            battery = self.tello.get_battery()  # Get battery level of the drone
-            if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
-                battery = int(battery)
+            self.battery = self.tello.get_battery()  # Get battery level of the drone
+            if not (self.battery == '' or self.battery == 'ok'):  # Checks if string battery is not empty
+                self.battery = int(self.battery)
                 print('Se convirtio valor de bateria a int')
             else:
                 print('Bateria entrego "" o "ok"')
@@ -301,10 +281,10 @@ class DroneX:
             height = frame_original.shape[0]
             # We create two writer objects that create the video sessions
             self.writer = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
-                                          FPS_vid, (width, height))
+                                          self.FPS_vid, (width, height))
             self.writer_processed = cv2.VideoWriter("{}/TelloVideo_processed.avi".format(ddir),
                                                     cv2.VideoWriter_fourcc(*'XVID'),
-                                                    FPS_vid, (width, height))
+                                                    self.FPS_vid, (width, height))
 
     def run(self):
 
@@ -378,14 +358,14 @@ class DroneX:
             x, y, r, detection, frame_processed = self.object_detection(frame_perspective, 0, 0)
 
         # Display grid in the actual frame
-        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)
+        x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, self.grid_size, x, y)
 
         # Display battery, logo and mode in the video
-        frame_user = self.display_icons(display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)), bat=True)
+        frame_user = self.display_icons(self.display_text(frame_grid, 'Drone-x', (410, 25), (0, 0, 0)), bat=True)
         if self.OVERRIDE:
-            frame_user = display_text(frame_user, 'OVERRIDE MODE: ON', (5, 710), (0, 0, 255), blink=True)
+            frame_user = self.display_text(frame_user, 'OVERRIDE MODE: ON', (5, 710), (0, 0, 255), blink=True)
         if self.debug:
-            frame_user = display_text(frame_user, 'DEBUG MODE: ON', (5, 25), (0, 0, 255), blink=True)
+            frame_user = self.display_text(frame_user, 'DEBUG MODE: ON', (5, 25), (0, 0, 255), blink=True)
 
         # --------------------------- READ KEY SECTION -----------------------------
         # Wait for a key to be press and grabs the value
@@ -399,7 +379,7 @@ class DroneX:
             if self.tello.is_flying:
                 for i in range(50):
                     self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
-                    time.sleep(1 / FPS)
+                    time.sleep(1 / self.FPS)
             self.drone_continuous_cycle = False
 
         if self.is_taking_off:
@@ -411,12 +391,12 @@ class DroneX:
         if (k == ord('t') or k == ord('T')) and not self.tello.is_flying and not self.debug:
             self.is_taking_off = True
             print('Takeoff...')
-            frame_user = display_text(frame_user, 'Taking off...', (5, 25), (0, 255, 255))
+            frame_user = self.display_text(frame_user, 'Taking off...', (5, 25), (0, 255, 255))
 
         if self.is_landing:
             for i in range(50):
                 self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
-                time.sleep(1 / FPS)
+                time.sleep(1 / self.FPS)
             self.tello.land()
             self.is_landing = False
 
@@ -424,7 +404,7 @@ class DroneX:
         if (k == ord('l') or k == ord('L')) and self.tello.is_flying and not self.debug:
             self.is_landing = True
             print('Land...')
-            frame_user = display_text(frame_user, 'Landing...', (5, 25), (0, 255, 255))
+            frame_user = self.display_text(frame_user, 'Landing...', (5, 25), (0, 255, 255))
 
         # Press spacebar to enter override mode
         if k == 32 and self.tello.is_flying:
@@ -438,33 +418,33 @@ class DroneX:
         if self.OVERRIDE:
             # W to fly forward and S to fly back
             if k == ord('w') or k == ord('W'):
-                self.for_back_velocity = int(S * oSpeed)
+                self.for_back_velocity = int(self.S * self.oSpeed)
             elif k == ord('s') or k == ord('S'):
-                self.for_back_velocity = -int(S * oSpeed)
+                self.for_back_velocity = -int(self.S * self.oSpeed)
             else:
                 self.for_back_velocity = 0
 
             #  C to fly clockwise and Z to fly counter clockwise
             if k == ord('c') or k == ord('C'):
-                self.yaw_velocity = int(S * oSpeed)
+                self.yaw_velocity = int(self.S * self.oSpeed)
             elif k == ord('z') or k == ord('Z'):
-                self.yaw_velocity = -int(S * oSpeed)
+                self.yaw_velocity = -int(self.S * self.oSpeed)
             else:
                 self.yaw_velocity = 0
 
             # Q to fly up and E to fly down
             if k == ord('q') or k == ord('Q'):
-                self.up_down_velocity = int(S * oSpeed)
+                self.up_down_velocity = int(self.S * self.oSpeed)
             elif k == ord('e') or k == ord('E'):
-                self.up_down_velocity = -int(S * oSpeed)
+                self.up_down_velocity = -int(self.S * self.oSpeed)
             else:
                 self.up_down_velocity = 0
 
             # A to fly left and D to fly right
             if k == ord('d') or k == ord('D'):
-                self.left_right_velocity = int(S * oSpeed)
+                self.left_right_velocity = int(self.S * self.oSpeed)
             elif k == ord('a') or k == ord('A'):
-                self.left_right_velocity = -int(S * oSpeed)
+                self.left_right_velocity = -int(self.S * self.oSpeed)
             else:
                 self.left_right_velocity = 0
 
@@ -480,13 +460,13 @@ class DroneX:
                 self.yaw_velocity, self.up_down_velocity, self.for_back_velocity = self.drone_stay_close(x, y, x_1,
                                                                                                          x_2, y_1,
                                                                                                          y_2, r,
-                                                                                                         radius_stop,
-                                                                                                         radius_stop_tolerance)
+                                                                                                         self.radius_stop,
+                                                                                                         self.radius_stop_tolerance)
 
         # --------------------------- WRITE VIDEO SESSION SECTION -----------------------------
         # Save the video session if True
         if self.save_session:
-            frame_user = display_text(frame_user, 'REC', (810, 25), (0, 0, 0))
+            frame_user = self.display_text(frame_user, 'REC', (810, 25), (0, 0, 0))
             frame_user = self.display_icons(frame_user, bat=True, rec=True)
             self.writer.write(frame_original)
             self.writer_processed.write(frame_user)
@@ -497,17 +477,15 @@ class DroneX:
 
         # --------------------------- MISCELLANEOUS SECTION -----------------------------
         # Save actual time
-        global actual_time
-        actual_time = time.time()
+        self.actual_time = time.time()
         # Delay to showcase desired fps in video
-        time.sleep(1 / FPS)
+        time.sleep(1 / self.FPS)
 
     def callback(self, x):
         pass
 
     def display_icons(self, frame, bat=True, rec=False):
         """ Display icons in the video """
-        global elapsed_time, actual_time, battery, elapsed_battery_blink, elapsed_recording_blink
 
         if bat:
             # Display a battery in the image representing its percentage
@@ -516,28 +494,29 @@ class DroneX:
 
             # Request battery every 15 seconds in autonomous mode
             if not self.debug:
-                if actual_time - elapsed_time > 15:
-                    elapsed_time = actual_time
+                if self.actual_time - self.elapsed_time > 15:
+                    self.elapsed_time = self.actual_time
                     print('Solicitar Bateria ')
                     try:
-                        battery = self.tello.get_battery()  # Get battery level of the drone
-                        if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
-                            battery = int(battery)
+                        self.battery = self.tello.get_battery()  # Get battery level of the drone
+                        if not (self.battery == '' or self.battery == 'ok'):  # Checks if string battery is not empty
+                            self.battery = int(self.battery)
                             print('Se convirtio valor de bateria a int')
                         else:
                             print('Bateria entrego "" o "ok"')
                     except:
                         print('Error al pedir bateria')
 
+
             # Request battery every 24 seconds in debug mode
             elif self.debug:
-                if actual_time - elapsed_time > 24:
-                    elapsed_time = actual_time
+                if self.actual_time - self.elapsed_time > 24:
+                    self.elapsed_time = self.actual_time
                     print('Solicitar Bateria ')
                     try:
-                        battery = self.tello.get_battery()  # Get battery level of the drone
-                        if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
-                            battery = int(battery)
+                        self.battery = self.tello.get_battery()  # Get battery level of the drone
+                        if not (self.battery == '' or self.battery == 'ok'):  # Checks if string battery is not empty
+                            self.battery = int(self.battery)
                             print('Se convirtio valor de bateria a int')
                         else:
                             print('Bateria entrego "" o "ok"')
@@ -545,33 +524,53 @@ class DroneX:
                         print('Error al pedir bateria')
 
             # Display a complete battery
-            if battery > 75:
+            if self.battery > 75:
                 cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 0), thickness=-1)
                 cv2.rectangle(frame, pt1=(932, 9), pt2=(938, 21), color=(0, 255, 0), thickness=-1)
                 cv2.rectangle(frame, pt1=(940, 9), pt2=(947, 21), color=(0, 255, 0), thickness=-1)
             # Display a 2/3 of the battery
-            elif 75 > battery > 50:
+            elif 75 > self.battery > 50:
                 cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 255, 255), thickness=-1)
                 cv2.rectangle(frame, pt1=(932, 9), pt2=(940, 21), color=(0, 255, 255), thickness=-1)
             # Display 1/3 of the battery
-            elif 50 > battery > 25:
+            elif 50 > self.battery > 25:
                 cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
             # Display 1/3 of the battery blinking
-            elif battery < 25:
+            elif self.battery < 25:
                 # Blinks battery every 0.5 seconds
-                if 0.5 < actual_time - elapsed_battery_blink < 1:
+                if 0.5 < self.actual_time - self.elapsed_battery_blink < 1:
                     cv2.rectangle(frame, pt1=(924, 9), pt2=(930, 21), color=(0, 0, 255), thickness=-1)
-                elif actual_time - elapsed_battery_blink > 1:
-                    elapsed_battery_blink = actual_time
+                elif self.actual_time - self.elapsed_battery_blink > 1:
+                    self.elapsed_battery_blink = self.actual_time
 
         if rec:
             # Blinks battery every 1 seconds
-            if 1 < actual_time - elapsed_recording_blink < 2:
+            if 1 < self.actual_time - self.elapsed_recording_blink < 2:
                 cv2.circle(frame, (890, 15), 10, (0, 0, 255), -1)  # Put a red circle indicating its recording
-            elif actual_time - elapsed_recording_blink > 2:
-                elapsed_recording_blink = actual_time
+            elif self.actual_time - self.elapsed_recording_blink > 2:
+                self.elapsed_recording_blink = self.actual_time
 
         return frame
+
+    def display_text(self, frame, text, org, color, blink=False):
+        """ Display text in the video """
+
+        font = cv2.FONT_ITALIC
+        #  Check if the text is needed to blink
+        if blink:
+            # This is to make the text blink one second on, one second off
+            if 1 < self.actual_time - self.elapsed_text_blink < 2:
+                cv2.putText(frame, text=text, org=org, fontFace=font, fontScale=1, color=color,
+                            thickness=2, lineType=cv2.LINE_8)
+            elif self.actual_time - self.elapsed_text_blink > 2:
+                self.elapsed_text_blink = self.actual_time
+
+        #  Display normal text is needed to blink
+        else:
+            cv2.putText(frame, text=text, org=org, fontFace=font, fontScale=1, color=color,
+                        thickness=2, lineType=cv2.LINE_8)
+
+        return frame  # Return the frame with the text
 
     def object_detection(self, frame, lower_hsv, upper_hsv):
         """ Track the color in the frame """
@@ -680,8 +679,8 @@ class Desktop:
         self.drone = DroneX()
 
     def run(self):
-        self.drone.debug = True
-        self.drone.save_session = True
+        self.drone.debug = False
+        self.drone.save_session = False
         self.drone.initializer()
 
         while self.drone.drone_continuous_cycle:
