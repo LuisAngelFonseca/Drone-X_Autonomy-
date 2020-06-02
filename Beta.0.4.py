@@ -712,13 +712,13 @@ while True:
 
         # --------------------------- TOMATO COUNTER SECTION -----------------------------
         # Get the number of tomatoes 
-        if r is not None and frame_capture_list:
+        # if r is not None and frame_capture_list:
             # if (frame_capture_list[0] + 5) > r > (frame_capture_list[0] - 5):
             #     del frame_capture_list[0]
-            if 35 < r < 45:
-                tomatoes = count_tomatoes(frame_original, 0)[0]
-                frame_user = count_tomatoes(frame_original, frame_user)[1]
-                # print(tomatoes)
+            # if 35 < r < 45:
+        tomatoes = count_tomatoes(frame_original, 0)[0]
+        frame_user = count_tomatoes(frame_original, frame_user)[1]
+        print(tomatoes)
         # --------------------------- SHOW VIDEO SECTION -----------------------------
         # Display the video
 

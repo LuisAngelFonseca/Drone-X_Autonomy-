@@ -252,7 +252,7 @@ class DroneX:
             print('DEBUG MODE ENABLED!')
             # create trackbars for color change
             cv2.namedWindow("Color Calibration")
-            cv2.resizeWindow('Color Calibration', 300, 350)
+            cv2.resizeWindow('Color Calibration', 400, 400)
             # HUE
             cv2.createTrackbar('Hue Min', 'Color Calibration', 0, 179, self.callback)
             cv2.createTrackbar('Hue Max', 'Color Calibration', 179, 179, self.callback)
@@ -263,8 +263,8 @@ class DroneX:
             cv2.createTrackbar('Val Min', 'Color Calibration', 0, 255, self.callback)
             cv2.createTrackbar('Val Max', 'Color Calibration', 255, 255, self.callback)
             # ITERATIONS
-            cv2.createTrackbar('Erosion', 'Color Calibration', 0, 30, self.callback)
-            cv2.createTrackbar('Dilation', 'Color Calibration', 0, 30, self.callback)
+            cv2.createTrackbar('Erosion', 'Color Calibration', 1, 30, self.callback)
+            cv2.createTrackbar('Dilation', 'Color Calibration', 1, 30, self.callback)
 
         # --------------------------- SAVE SESSION SECTION -----------------------------
         # Capture a frame from drone camera
@@ -330,13 +330,13 @@ class DroneX:
             # Create HSV image, passing it from BGR
             frame_HSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-            lower_hsv = np.array([h_min, s_min, v_min])
-            upper_hsv = np.array([h_max, s_max, v_max])
+            lower_hsv = (h_min, s_min, v_min)
+            upper_hsv = (h_max, s_max, v_max)
 
             # Saving the lower and upper hsv values in a pickle file:
-            with open('mask_values.pkl', 'wb') as f:
-                pickle.dump([lower_hsv, upper_hsv, erosion, dilation], f)
-                f.close()
+            with open('mask_values.pkl', 'wb') as fw:
+                pickle.dump([lower_hsv, upper_hsv], fw)
+                fw.close()
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
             mask = cv2.erode(mask, None, iterations=erosion)
@@ -594,11 +594,9 @@ class DroneX:
 
         # Else, use the lower and upper hardcoded parameters
         else:
-            # Color range of wanted object
-            color_lower = (90, 80, 55)
-            color_upper = (107, 251, 255)
-            # color_lower = (76, 96, 0)
-            # color_upper = (129, 255, 255)
+            with open('mask_values.pkl', 'rb') as f:
+                color_lower, color_upper = pickle.load(f)
+                f.close()
 
         # Blur frame, and convert it to the HSV color space
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
