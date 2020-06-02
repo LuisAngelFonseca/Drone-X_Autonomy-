@@ -504,7 +504,6 @@ while True:
             v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
             erosion = cv2.getTrackbarPos('Erosion', 'Color Calibration')
             dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
-            cv2.waitKey(10)
 
             # Apply a Gaussian Blur to the image in order to reduce detail
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)

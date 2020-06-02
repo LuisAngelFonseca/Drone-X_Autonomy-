@@ -349,18 +349,6 @@ class DroneX:
         # --------------------------- SAVE SESSION SECTION -----------------------------
         # Capture a frame from drone camera
         self.frame_read = self.tello.get_frame_read()
-        if self.frame_read.grabbed:
-            # Take the original frame for the video capture of the session
-            frame_original = self.frame_read.frame
-        else:
-            # In case streaming is on. This happens when we quit this program without the escape key.
-            if not self.tello.streamoff():
-                print("Could not stop video stream")
-                return
-
-            if not self.tello.streamon():
-                print("Could not start video stream")
-                return
 
         # Check if save session mode is on
         if self.save_session:
@@ -374,8 +362,8 @@ class DroneX:
             ddir = "Sessions/Session {}".format(str(datetime.datetime.now()).replace(':', '-').replace('.', '_'))
             os.mkdir(ddir)
             # Get the frame size
-            width = frame_original.shape[1]
-            height = frame_original.shape[0]
+            width = 960
+            height = 720
             # We create two writer objects that create the video sessions
             self.writer = cv2.VideoWriter("{}/TelloVideo.avi".format(ddir), cv2.VideoWriter_fourcc(*'XVID'),
                                           self.FPS_vid, (width, height))
@@ -394,10 +382,6 @@ class DroneX:
                                        self.yaw_velocity)
 
         # --------------------------- FRAME READ SECTION -----------------------------
-        # # If there is no frame, do not read the actual frame
-        # if self.frame_read.stopped:
-        #     self.frame_read.stop()
-        #     self.drone_continuous_cycle = False
 
         # Update frame
         if self.frame_read.grabbed:
@@ -405,8 +389,6 @@ class DroneX:
             frame = frame_original.copy()
         # In case no frame was grabbed, create dummy frame
         else:
-            # frame_original = np.zeros((720, 960, 3), np.uint8)
-            # frame = frame_original.copy()
             # In case streaming is on. This happens when we quit this program without the escape key.
             if self.tello.background_frame_read is not None:
                 self.tello.background_frame_read.stop()
@@ -434,7 +416,6 @@ class DroneX:
             v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
             erosion = cv2.getTrackbarPos('Erosion', 'Color Calibration')
             dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
-            cv2.waitKey(10)
 
             # Apply a Gaussian Blur to the image in order to reduce detail
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -492,9 +473,6 @@ class DroneX:
 
         # --------------------------- READ KEY SECTION -----------------------------
         # Wait for a key to be press and grabs the value
-        # k = cv2.waitKey(20)
-        # self.set_event(0)
-        # time.sleep(0.020)
         k = self.get_event()
 
         # Press ESC to quit -!-!-!-> EXIT PROGRAM <-!-!-!-
