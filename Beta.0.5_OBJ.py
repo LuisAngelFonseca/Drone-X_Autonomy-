@@ -7,7 +7,9 @@ import math
 import os
 import datetime
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QMessageBox
 import sys
+import pickle
 
 
 def stackImages(scale, imgArray):
@@ -194,7 +196,7 @@ class DroneX:
 
         self.is_landing = False
         self.is_taking_off = False
-        self.drone_continuous_cycle = True
+        self.drone_continuous_cycle = False
         self.OVERRIDE = False
         self.debug = False
         self.save_session = False
@@ -330,6 +332,11 @@ class DroneX:
 
             lower_hsv = np.array([h_min, s_min, v_min])
             upper_hsv = np.array([h_max, s_max, v_max])
+
+            # Saving the lower and upper hsv values in a pickle file:
+            with open('mask_values.pkl', 'wb') as f:
+                pickle.dump([lower_hsv, upper_hsv, erosion, dilation], f)
+                f.close()
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
             mask = cv2.erode(mask, None, iterations=erosion)
@@ -703,12 +710,14 @@ class Desktop:
             self.drone.tello.land()
         if self.drone.tello.stream_on:
             self.drone.tello.streamoff()
+
+        self.drone.OVERRIDE = False
         print('Se salio del ciclo dron y se termino funcion run')
 
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
+        MainWindow.setObjectName("Drone-X Dashboard")
         MainWindow.resize(800, 600)
         MainWindow.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -722,26 +731,26 @@ class Ui_MainWindow(object):
         self.autonomous_button = QtWidgets.QPushButton(self.centralwidget)
         self.autonomous_button.setGeometry(QtCore.QRect(310, 200, 191, 71))
         self.autonomous_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
-"color: rgb(255, 255, 255);\n"
-"font: 12pt \"Impact\";")
+                                             "color: rgb(255, 255, 255);\n"
+                                             "font: 12pt \"Impact\";")
         self.autonomous_button.setObjectName("autonomous_button")
         self.calib_button = QtWidgets.QPushButton(self.centralwidget)
         self.calib_button.setGeometry(QtCore.QRect(310, 330, 191, 71))
         self.calib_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
-"color: rgb(255, 255, 255);\n"
-"font: 12pt \"Impact\";")
+                                        "color: rgb(255, 255, 255);\n"
+                                        "font: 12pt \"Impact\";")
         self.calib_button.setObjectName("calib_button")
         self.exit_button = QtWidgets.QPushButton(self.centralwidget)
         self.exit_button.setGeometry(QtCore.QRect(310, 460, 191, 71))
         self.exit_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
-"color: rgb(255, 255, 255);\n"
-"font: 12pt \"Impact\";")
+                                       "color: rgb(255, 255, 255);\n"
+                                       "font: 12pt \"Impact\";")
         self.exit_button.setObjectName("exit_button")
         self.about_button = QtWidgets.QPushButton(self.centralwidget)
         self.about_button.setGeometry(QtCore.QRect(670, 500, 111, 31))
         self.about_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
-"color: rgb(255, 255, 255);\n"
-"font: 8pt \"Impact\";")
+                                        "color: rgb(255, 255, 255);\n"
+                                        "font: 8pt \"Impact\";")
         self.about_button.setObjectName("about_button")
         self.radioButton = QtWidgets.QRadioButton(self.centralwidget)
         self.radioButton.setGeometry(QtCore.QRect(310, 120, 211, 71))
@@ -761,18 +770,18 @@ class Ui_MainWindow(object):
 
         self.desktop = Desktop()
         self.radioButton.toggled.connect(self.toggle_session)
-        self.calib_button.clicked.connect(self.debug_toggle)
-        self.autonomous_button.clicked.connect(self.autonomous_toggle)
+        self.calib_button.clicked.connect(self.debug_mode)
+        self.autonomous_button.clicked.connect(self.autonomous_mode)
         self.exit_button.clicked.connect(self.close_gui)
-
-
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.autonomous_button.setStatusTip(_translate("MainWindow", "Entrar en vuelo autónomo que seguira el objeto a detectar"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Drone-X Dashboard"))
+        self.autonomous_button.setStatusTip(
+            _translate("MainWindow", "Entrar en vuelo autónomo que seguira el objeto a detectar"))
         self.autonomous_button.setText(_translate("MainWindow", "Modo Autónomo"))
-        self.calib_button.setStatusTip(_translate("MainWindow", "Entrar en modo de calibración para ajustar valores a detectar objeto deseado"))
+        self.calib_button.setStatusTip(
+            _translate("MainWindow", "Entrar en modo de calibración para ajustar valores a detectar objeto deseado"))
         self.calib_button.setText(_translate("MainWindow", "Calibración"))
         self.exit_button.setStatusTip(_translate("MainWindow", "Salir del programa"))
         self.exit_button.setText(_translate("MainWindow", "Salir"))
@@ -786,15 +795,61 @@ class Ui_MainWindow(object):
         print(self.desktop.drone.save_session)
         # Desktop.drone.save_session = self.radioButton
 
-    def debug_toggle(self):
-        self.desktop.drone.debug = True
-        print(self.desktop.drone.debug)
-        self.desktop.run()
+    def debug_mode(self):
+        if not self.desktop.drone.drone_continuous_cycle:
+            self.desktop.drone.debug = True
+            try_error = False
+            try:
+                self.desktop.drone.tello.retry_count = 1
+                self.connecting_popup()
+                self.desktop.drone.tello.send_control_command('command', timeout=3)
+            except:
+                try_error = True
+                print("Tello not connected")
+                self.not_connected_popup()
 
-    def autonomous_toggle(self):
-        self.desktop.drone.debug = False
-        print(self.desktop.drone.debug)
-        self.desktop.run()
+            if not try_error:
+                self.desktop.drone.tello.retry_count = 3
+                self.desktop.run()
+
+        else:
+            print('Ya esta en un modo')
+
+    def autonomous_mode(self):
+        if not self.desktop.drone.drone_continuous_cycle:
+            self.desktop.drone.debug = False
+            try_error = False
+            try:
+                self.desktop.drone.tello.retry_count = 1
+                self.connecting_popup()
+                self.desktop.drone.tello.send_control_command('command', timeout=3)
+            except:
+                try_error = True
+                print("Tello not connected")
+                self.not_connected_popup()
+
+            if not try_error:
+                self.desktop.drone.tello.retry_count = 3
+                self.desktop.run()
+        else:
+            print('Ya esta en un modo')
+
+    def not_connected_popup(self):
+        msg = QMessageBox()
+        msg.setWindowTitle('Warning')
+        msg.setText('Tello no conectado a Wifi')
+        msg.setIcon(QMessageBox.Warning)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setInformativeText('Favor de conectarse al Tello, y volver a intentar')
+        x = msg.exec_()
+
+    def connecting_popup(self):
+        msg = QMessageBox()
+        msg.setWindowTitle('Conectandose')
+        msg.setText('El Tello se esta conectando')
+        msg.setIcon(QMessageBox.Information)
+        msg.setInformativeText('Favor de ser paciente')
+        x = msg.exec_()
 
     def close_gui(self):
         if self.desktop.drone.tello.background_frame_read is not None:
@@ -815,9 +870,7 @@ def main():
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
     MainWindow.show()
-    print('Cerro')
     sys.exit(app.exec_())
-
 
 
 if __name__ == '__main__':
