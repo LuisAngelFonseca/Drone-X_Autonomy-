@@ -130,3 +130,7 @@ dmypy.json
 
 # Recording session folders
 Sessions/
+
+# Color HSV config
+mask_values.pkl
+delete.py

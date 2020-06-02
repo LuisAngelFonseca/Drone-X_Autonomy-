@@ -266,6 +266,21 @@ class DroneX:
             cv2.createTrackbar('Erosion', 'Color Calibration', 1, 30, self.callback)
             cv2.createTrackbar('Dilation', 'Color Calibration', 1, 30, self.callback)
 
+            with open('mask_values.pkl', 'rb') as f:
+                color_lower, color_upper = pickle.load(f)
+                f.close()
+
+            hue_lower, sat_lower, val_lower = color_lower
+            hue_upper, sat_upper, val_upper = color_upper
+
+            # Change trackbar position value to clicked one with tolerance
+            cv2.setTrackbarPos('Hue Min', 'Color Calibration', hue_lower)
+            cv2.setTrackbarPos('Hue Max', 'Color Calibration', hue_upper)
+            cv2.setTrackbarPos('Sat Min', 'Color Calibration', sat_lower)
+            cv2.setTrackbarPos('Sat Max', 'Color Calibration', sat_upper)
+            cv2.setTrackbarPos('Val Min', 'Color Calibration', val_lower)
+            cv2.setTrackbarPos('Val Max', 'Color Calibration', val_upper)
+
         # --------------------------- SAVE SESSION SECTION -----------------------------
         # Capture a frame from drone camera
         self.frame_read = self.tello.get_frame_read()
