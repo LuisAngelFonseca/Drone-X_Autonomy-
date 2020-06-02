@@ -878,10 +878,11 @@ class Ui_MainWindow(object):
         self.radioButton.setText(_translate("MainWindow", "Guardar video de sesión"))
 
     def toggle_session(self):
-        # print('llego')
-        self.desktop.drone.save_session = self.radioButton.isChecked()
-        print(self.desktop.drone.save_session)
-        # Desktop.drone.save_session = self.radioButton
+        if not self.desktop.drone.drone_continuous_cycle:
+            self.desktop.drone.save_session = self.radioButton.isChecked()
+            print(self.desktop.drone.save_session)
+        else:
+            print('Ya esta en un modo')
 
     def debug_mode(self):
         if not self.desktop.drone.drone_continuous_cycle:
