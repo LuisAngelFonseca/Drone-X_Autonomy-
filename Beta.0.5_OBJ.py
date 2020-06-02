@@ -273,6 +273,7 @@ class DroneX:
         self.__event = val
 
     def initializer(self):
+
         if not self.tello.connect():
             print("Tello not connected")
             return
@@ -298,7 +299,8 @@ class DroneX:
         print('Solicitar Bateria ')
         try:
             self.battery = self.tello.get_battery()  # Get battery level of the drone
-            if not (self.battery == '' or self.battery == 'ok'):  # Checks if string battery is not empty
+            # Checks if string battery is not empty
+            if not (self.battery == '' or self.battery == 'ok' or self.battery == 'OK'):
                 self.battery = int(self.battery)
                 print('Se convirtio valor de bateria a int')
             else:
@@ -347,8 +349,19 @@ class DroneX:
         # --------------------------- SAVE SESSION SECTION -----------------------------
         # Capture a frame from drone camera
         self.frame_read = self.tello.get_frame_read()
-        # Take the original frame for the video capture of the session
-        frame_original = self.frame_read.frame
+        if self.frame_read.grabbed:
+            # Take the original frame for the video capture of the session
+            frame_original = self.frame_read.frame
+        else:
+            # In case streaming is on. This happens when we quit this program without the escape key.
+            if not self.tello.streamoff():
+                print("Could not stop video stream")
+                return
+
+            if not self.tello.streamon():
+                print("Could not start video stream")
+                return
+
         # Check if save session mode is on
         if self.save_session:
 
@@ -381,14 +394,33 @@ class DroneX:
                                        self.yaw_velocity)
 
         # --------------------------- FRAME READ SECTION -----------------------------
-        # If there is no frame, do not read the actual frame
-        if self.frame_read.stopped:
-            self.frame_read.stop()
-            self.drone_continuous_cycle = False
+        # # If there is no frame, do not read the actual frame
+        # if self.frame_read.stopped:
+        #     self.frame_read.stop()
+        #     self.drone_continuous_cycle = False
 
         # Update frame
-        frame_original = self.frame_read.frame
-        frame = frame_original.copy()
+        if self.frame_read.grabbed:
+            frame_original = self.frame_read.frame
+            frame = frame_original.copy()
+        # In case no frame was grabbed, create dummy frame
+        else:
+            # frame_original = np.zeros((720, 960, 3), np.uint8)
+            # frame = frame_original.copy()
+            # In case streaming is on. This happens when we quit this program without the escape key.
+            if self.tello.background_frame_read is not None:
+                self.tello.background_frame_read.stop()
+            if self.tello.cap is not None:
+                self.tello.cap.release()
+            if not self.tello.streamoff():
+                print("Could not stop video stream")
+                return
+            if not self.tello.streamon():
+                print("Could not start video stream")
+                return
+            self.frame_read = self.tello.get_frame_read()
+            frame_original = self.frame_read.frame
+            frame = frame_original.copy()
 
         # --------------------------- DEBUG CALIBRATION SECTION -----------------------------
         # Update the trackbars HSV mask and apply the erosion and dilation
@@ -600,7 +632,8 @@ class DroneX:
                     print('Solicitar Bateria ')
                     try:
                         self.battery = self.tello.get_battery()  # Get battery level of the drone
-                        if not (self.battery == '' or self.battery == 'ok'):  # Checks if string battery is not empty
+                        # Checks if string battery is not empty
+                        if not (self.battery == '' or self.battery == 'ok' or self.battery == 'OK'):
                             self.battery = int(self.battery)
                             print('Se convirtio valor de bateria a int')
                         else:
@@ -616,7 +649,8 @@ class DroneX:
                     print('Solicitar Bateria ')
                     try:
                         self.battery = self.tello.get_battery()  # Get battery level of the drone
-                        if not (self.battery == '' or self.battery == 'ok'):  # Checks if string battery is not empty
+                        # Checks if string battery is not empty
+                        if not (self.battery == '' or self.battery == 'ok' or self.battery == 'OK'):
                             self.battery = int(self.battery)
                             print('Se convirtio valor de bateria a int')
                         else:
@@ -885,41 +919,74 @@ class Ui_MainWindow(object):
             print('Ya esta en un modo')
 
     def debug_mode(self):
+        # Check to see if its not already running a mode
         if not self.desktop.drone.drone_continuous_cycle:
-            self.desktop.drone.debug = True
-            try_error = False
+            self.desktop.drone.debug = True  # Set Debug flag to true
+            connection_error = False  # Check for connection errors
             try:
-                self.desktop.drone.tello.retry_count = 1
-                self.connecting_popup()
-                self.desktop.drone.tello.send_control_command('command', timeout=3)
-            except:
-                try_error = True
+                self.desktop.drone.tello.retry_count = 1  # Set retry command count to one for testing connection
+                self.connecting_popup()  # Show "Tello is connecting" popup
+                self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
+            except UnicodeDecodeError:
+                pass
+            except Exception as e:
+                connection_error = True
+                print('Connecting exception: ', e)
+
+            # True if Tello is turned off when trying to run the program
+            if connection_error:
                 print("Tello not connected")
                 self.not_connected_popup()
 
-            if not try_error:
-                self.desktop.drone.tello.retry_count = 3
-                self.desktop.run()
+            # Tello is connected
+            else:
+                self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
+                try:
+                    self.desktop.run()  # Run program
+                except UnicodeDecodeError:
+                    pass
+                except Exception as e:
+                    print('Run excepction: ', e)
+                    print('Error while running run')
+                    cv2.destroyAllWindows()
+                    self.desktop.drone.drone_continuous_cycle = False
 
         else:
             print('Ya esta en un modo')
 
     def autonomous_mode(self):
+        # Check to see if its not already running a mode
         if not self.desktop.drone.drone_continuous_cycle:
-            self.desktop.drone.debug = False
-            try_error = False
+            self.desktop.drone.debug = False  # Set Debug flag to true
+            connection_error = False  # Check for connection errors
             try:
-                self.desktop.drone.tello.retry_count = 1
-                self.connecting_popup()
-                self.desktop.drone.tello.send_control_command('command', timeout=3)
-            except:
-                try_error = True
+                self.desktop.drone.tello.retry_count = 1  # Set retry command count to one for testing connection
+                self.connecting_popup()  # Show "Tello is connecting" popup
+                self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
+            except UnicodeDecodeError:
+                pass
+            except Exception as e:
+                connection_error = True
+                print('Connecting exception: ', e)
+
+            # True if Tello is turned off when trying to run the program
+            if connection_error:
                 print("Tello not connected")
                 self.not_connected_popup()
 
-            if not try_error:
-                self.desktop.drone.tello.retry_count = 3
-                self.desktop.run()
+            # Tello is connected
+            else:
+                self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
+                try:
+                    self.desktop.run()  # Run program
+                except UnicodeDecodeError:
+                    pass
+                except Exception as e:
+                    print('Run excepction: ', e)
+                    print('Error while running run')
+                    cv2.destroyAllWindows()
+                    self.desktop.drone.drone_continuous_cycle = False
+
         else:
             print('Ya esta en un modo')
 

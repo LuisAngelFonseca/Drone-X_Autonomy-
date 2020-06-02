@@ -196,7 +196,8 @@ def display_icons(frame, bat=True, rec=False):
                 print('Solicitar Bateria ')
                 try:
                     battery = tello.get_battery()  # Get battery level of the drone
-                    if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
+                    # Checks if string battery is not empty
+                    if not (battery == '' or battery == 'ok' or battery == 'OK'):
                         battery = int(battery)
                         print('Se convirtio valor de bateria a int')
                     else:
@@ -211,7 +212,8 @@ def display_icons(frame, bat=True, rec=False):
                 print('Solicitar Bateria ')
                 try:
                     battery = tello.get_battery()  # Get battery level of the drone
-                    if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
+                    # Checks if string battery is not empty
+                    if not (battery == '' or battery == 'ok' or battery == 'OK'):
                         battery = int(battery)
                         print('Se convirtio valor de bateria a int')
                     else:
@@ -416,7 +418,8 @@ while True:
     print('Solicitar Bateria ')
     try:
         battery = tello.get_battery()  # Get battery level of the drone
-        if not (battery == '' or battery == 'ok'):  # Checks if string battery is not empty
+        # Checks if string battery is not empty
+        if not (battery == '' or battery == 'ok' or battery == 'OK'):
             battery = int(battery)
             print('Se convirtio valor de bateria a int')
         else:
