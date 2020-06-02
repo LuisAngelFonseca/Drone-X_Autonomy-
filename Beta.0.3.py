@@ -249,7 +249,7 @@ def display_icons(frame, bat=True, rec=False):
     return frame
 
 
-def object_detection(frame, lower_hsv, upper_hsv):
+def object_detection(frame, lower_hsv, upper_hsv, erosion, dilation):
     """ Track the color in the frame """
 
     # If mode debug is active, make lower and upper parameters
@@ -257,12 +257,16 @@ def object_detection(frame, lower_hsv, upper_hsv):
     if args.debug:
         color_lower = lower_hsv
         color_upper = upper_hsv
+        erosion_iter = erosion
+        dilation_iter = dilation
 
     # Else, use the lower and upper hardcoded parameters
     else:
         # Color range of wanted object
         color_lower = (90, 80, 55)
         color_upper = (107, 251, 255)
+        erosion_iter = 1
+        dilation_iter = 5
         # color_lower = (76, 96, 0)
         # color_upper = (129, 255, 255)
 
@@ -274,8 +278,8 @@ def object_detection(frame, lower_hsv, upper_hsv):
     # a series of erodes and dilates to remove any small
     # blobs left in the mask
     mask = cv2.inRange(frameHSV, color_lower, color_upper)
-    mask = cv2.erode(mask, None, iterations=1)
-    mask = cv2.dilate(mask, None, iterations=5)
+    mask = cv2.erode(mask, None, iterations=erosion_iter)
+    mask = cv2.dilate(mask, None, iterations=dilation_iter)
 
     # Find contours in the mask
     contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -284,6 +288,10 @@ def object_detection(frame, lower_hsv, upper_hsv):
     # Initialize variables
     contours_circles = []  # Will contain contours with circularity
     center = None  # Will contain x and y coordinates of objects
+    detection = False
+    x = None
+    y = None
+    radius = None
 
     # Only proceed if at least one contour was found
     if len(contours) > 0:
@@ -291,10 +299,11 @@ def object_detection(frame, lower_hsv, upper_hsv):
         # if it falls between the range, append it
         for contour in contours:
             perimeter = cv2.arcLength(contour, True)
-            area = cv2.contourArea(contour)
-            circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
-            if 0.85 < circularity < 1.05:
-                contours_circles.append(contour)
+            if perimeter > 0:
+                area = cv2.contourArea(contour)
+                circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
+                if 0.85 < circularity < 1.05:
+                    contours_circles.append(contour)
 
     # Only proceed if at least one contour with circularity was found
     if len(contours_circles) > 0:
@@ -314,13 +323,6 @@ def object_detection(frame, lower_hsv, upper_hsv):
             # draw the circle and centroid on the frame
             cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
-
-    #  No object has been detected
-    else:
-        detection = False
-        x = None
-        y = None
-        radius = None
 
     return x, y, radius, detection, frame  # Return the position, radius of the object, and the frame
 
@@ -499,6 +501,7 @@ while True:
             v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
             erosion = cv2.getTrackbarPos('Erosion', 'Color Calibration')
             dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
+            cv2.waitKey(10)
 
             # Apply a Gaussian Blur to the image in order to reduce detail
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -534,9 +537,10 @@ while True:
 
         # If we are in debug mode, send the trackbars values to the object detection algorithm
         if args.debug:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv)
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, lower_hsv, upper_hsv, erosion,
+                                                                   dilation)
         else:
-            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0)
+            x, y, r, detection, frame_processed = object_detection(frame_perspective, 0, 0, 0, 0)
 
         # Display grid in the actual frame
         x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, grid_size, x, y)

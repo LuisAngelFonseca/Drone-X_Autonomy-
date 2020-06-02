@@ -144,6 +144,56 @@ def display_grid(frame, size, x, y):
     return x1, x2, y1, y2, frame  # Return the position of each line and the frame
 
 
+def get_frames_while_flying(rmax, rmin, stops):
+    list_of_stops = []
+    for stop in range(stops + 1):
+        stop = (((rmax - rmin) / stops) * (stop)) + rmin
+        list_of_stops.append(stop)
+
+    return list_of_stops
+
+
+def count_tomatoes(frame_read, frame_user):
+    # Declaration of color variables
+    # Red variables
+    color_lower = (15, 100, 55)
+    color_upper = (34, 255, 255)
+
+    # Blur frame, and convert it to the HSV color space
+    blurred = cv2.GaussianBlur(frame_read, (11, 11), 0)
+    frameHSV = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+
+    # Construct a mask for the color, then perform
+    # a series of erodes and dilates to remove any small
+    # blobs left in the mask
+    mask = cv2.inRange(frameHSV, color_lower, color_upper)
+    mask = cv2.erode(mask, None, iterations=2)
+    mask = cv2.dilate(mask, None, iterations=2)
+
+    # Find contours in the mask
+    contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = imutils.grab_contours(contours)
+
+    t_cnts = []
+
+    # Only will show contours if at least one blue contour is found
+    if len(contours) > 0:
+        # loop over the contours
+        for contour in contours:
+            # compute the center of the contour
+            area = cv2.contourArea(contour)
+            if area > 300:
+                t_cnts.append(contour)
+                M = cv2.moments(contour)
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                # # draw the contour and center of the shape on the image
+                # cv2.drawContours(frame_user, [c], -1, (0, 255, 0), 2)
+                # cv2.circle(frame_user, (cX, cY), 7, (255, 255, 255), -1)
+
+    return len(t_cnts), frame_user
+
+
 class DroneX:
 
     def __init__(self):
@@ -170,6 +220,17 @@ class DroneX:
         self.radius_stop = 60
         # Tolerance range in which the drone will stop
         self.radius_stop_tolerance = 5
+
+        # Maximum radius of target that the drone will detect
+        self.max_radius = 45
+        # Minimum radius of target that the drone will detect
+        self.min_radius = 10
+        # Number of frames to save in range of the radius
+        self.frames_to_capture = 3
+        # Create a list to save a frame at different distances
+        self.frame_capture_list = get_frames_while_flying(self.max_radius, self.min_radius, self.frames_to_capture)
+        # Number of tomatoes found
+        self.tomatoes = 0
 
         # Create variables that counts time
         self.actual_time = time.time()
@@ -263,11 +324,11 @@ class DroneX:
             cv2.createTrackbar('Val Min', 'Color Calibration', 0, 255, self.callback)
             cv2.createTrackbar('Val Max', 'Color Calibration', 255, 255, self.callback)
             # ITERATIONS
-            cv2.createTrackbar('Erosion', 'Color Calibration', 1, 30, self.callback)
-            cv2.createTrackbar('Dilation', 'Color Calibration', 1, 30, self.callback)
+            cv2.createTrackbar('Erosion', 'Color Calibration', 0, 30, self.callback)
+            cv2.createTrackbar('Dilation', 'Color Calibration', 0, 30, self.callback)
 
             with open('mask_values.pkl', 'rb') as f:
-                color_lower, color_upper = pickle.load(f)
+                color_lower, color_upper, erosion, dilation = pickle.load(f)
                 f.close()
 
             hue_lower, sat_lower, val_lower = color_lower
@@ -280,6 +341,8 @@ class DroneX:
             cv2.setTrackbarPos('Sat Max', 'Color Calibration', sat_upper)
             cv2.setTrackbarPos('Val Min', 'Color Calibration', val_lower)
             cv2.setTrackbarPos('Val Max', 'Color Calibration', val_upper)
+            cv2.setTrackbarPos('Erosion', 'Color Calibration', erosion)
+            cv2.setTrackbarPos('Dilation', 'Color Calibration', dilation)
 
         # --------------------------- SAVE SESSION SECTION -----------------------------
         # Capture a frame from drone camera
@@ -339,6 +402,7 @@ class DroneX:
             v_max = cv2.getTrackbarPos('Val Max', 'Color Calibration')
             erosion = cv2.getTrackbarPos('Erosion', 'Color Calibration')
             dilation = cv2.getTrackbarPos('Dilation', 'Color Calibration')
+            cv2.waitKey(10)
 
             # Apply a Gaussian Blur to the image in order to reduce detail
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -350,7 +414,7 @@ class DroneX:
 
             # Saving the lower and upper hsv values in a pickle file:
             with open('mask_values.pkl', 'wb') as fw:
-                pickle.dump([lower_hsv, upper_hsv], fw)
+                pickle.dump([lower_hsv, upper_hsv, erosion, dilation], fw)
                 fw.close()
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
@@ -379,9 +443,10 @@ class DroneX:
 
         # If we are in debug mode, send the trackbars values to the object detection algorithm
         if self.debug:
-            x, y, r, detection, frame_processed = self.object_detection(frame_perspective, lower_hsv, upper_hsv)
+            x, y, r, detection, frame_processed = self.object_detection(frame_perspective, lower_hsv, upper_hsv, erosion,
+                                                                        dilation)
         else:
-            x, y, r, detection, frame_processed = self.object_detection(frame_perspective, 0, 0)
+            x, y, r, detection, frame_processed = self.object_detection(frame_perspective, 0, 0, 0, 0)
 
         # Display grid in the actual frame
         x_1, x_2, y_1, y_2, frame_grid = display_grid(frame_processed, self.grid_size, x, y)
@@ -497,6 +562,16 @@ class DroneX:
             self.writer.write(frame_original)
             self.writer_processed.write(frame_user)
 
+        # --------------------------- TOMATO COUNTER SECTION -----------------------------
+        # Get the number of tomatoes
+        # if r is not None and frame_capture_list:
+        # if (frame_capture_list[0] + 5) > r > (frame_capture_list[0] - 5):
+        #     del frame_capture_list[0]
+        # if 35 < r < 45:
+        self.tomatoes = count_tomatoes(frame_original, 0)[0]
+        # frame_user = count_tomatoes(frame_original, frame_user)[1]
+        # print(tomatoes)
+
         # --------------------------- SHOW VIDEO SECTION -----------------------------
         # Display the video
         cv2.imshow('Drone X', frame_user)
@@ -598,7 +673,7 @@ class DroneX:
 
         return frame  # Return the frame with the text
 
-    def object_detection(self, frame, lower_hsv, upper_hsv):
+    def object_detection(self, frame, lower_hsv, upper_hsv, erosion, dilation):
         """ Track the color in the frame """
 
         # If mode debug is active, make lower and upper parameters
@@ -606,11 +681,13 @@ class DroneX:
         if self.debug:
             color_lower = lower_hsv
             color_upper = upper_hsv
+            erosion_iter = erosion
+            dilation_iter = dilation
 
         # Else, use the lower and upper hardcoded parameters
         else:
             with open('mask_values.pkl', 'rb') as f:
-                color_lower, color_upper = pickle.load(f)
+                color_lower, color_upper, erosion_iter, dilation_iter = pickle.load(f)
                 f.close()
 
         # Blur frame, and convert it to the HSV color space
@@ -621,8 +698,8 @@ class DroneX:
         # a series of erodes and dilates to remove any small
         # blobs left in the mask
         mask = cv2.inRange(frameHSV, color_lower, color_upper)
-        mask = cv2.erode(mask, None, iterations=1)
-        mask = cv2.dilate(mask, None, iterations=5)
+        mask = cv2.erode(mask, None, iterations=erosion_iter)
+        mask = cv2.dilate(mask, None, iterations=dilation_iter)
 
         # Find contours in the mask
         contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -631,6 +708,10 @@ class DroneX:
         # Initialize variables
         contours_circles = []  # Will contain contours with circularity
         center = None  # Will contain x and y coordinates of objects
+        detection = False
+        x = None
+        y = None
+        radius = None
 
         # Only proceed if at least one contour was found
         if len(contours) > 0:
@@ -638,10 +719,11 @@ class DroneX:
             # if it falls between the range, append it
             for contour in contours:
                 perimeter = cv2.arcLength(contour, True)
-                area = cv2.contourArea(contour)
-                circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
-                if 0.85 < circularity < 1.05:
-                    contours_circles.append(contour)
+                if perimeter > 0:
+                    area = cv2.contourArea(contour)
+                    circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
+                    if 0.85 < circularity < 1.05:
+                        contours_circles.append(contour)
 
         # Only proceed if at least one contour with circularity was found
         if len(contours_circles) > 0:
@@ -661,13 +743,6 @@ class DroneX:
                 # draw the circle and centroid on the frame
                 cv2.circle(frame, center, int(radius), (0, 255, 255), 2)
                 cv2.circle(frame, center, 5, (0, 0, 255), -1)
-
-        #  No object has been detected
-        else:
-            detection = False
-            x = None
-            y = None
-            radius = None
 
         return x, y, radius, detection, frame  # Return the position, radius of the object, and the frame
 
