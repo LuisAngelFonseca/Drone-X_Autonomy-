@@ -208,7 +208,7 @@ def count_tomatoes(frame_read, frame_user):
     return len(t_cnts), frame_user
 
 
-class DroneX:
+class DroneX(object):
 
     def __init__(self):
 
@@ -804,7 +804,7 @@ class DroneX:
             self.tello.retry_count = 3
 
 
-class Desktop:
+class Desktop(object):
     drone = None
 
     def __init__(self):
