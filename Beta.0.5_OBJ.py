@@ -12,6 +12,20 @@ import sys
 import pickle
 
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        """ Get absolute path to resource, works for dev and for PyInstaller """
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+Logo = resource_path("Resources/logo.png")
+Pickle = resource_path("mask_values.pkl")
+
+
 def stackImages(scale, imgArray):
     """ This function is for the debug mode that allows to have 4 images stack in the same window """
     rows = len(imgArray)
@@ -331,8 +345,9 @@ class DroneX:
             cv2.createTrackbar('Erosion', 'Color Calibration', 0, 30, self.callback)
             cv2.createTrackbar('Dilation', 'Color Calibration', 0, 30, self.callback)
 
-            with open('mask_values.pkl', 'rb') as f:
+            with open(Pickle, 'rb') as f:
                 color_lower, color_upper, erosion, dilation = pickle.load(f)
+                print('Pickle read correctly')
                 f.close()
 
             hue_lower, sat_lower, val_lower = color_lower
@@ -412,8 +427,9 @@ class DroneX:
             upper_hsv = (h_max, s_max, v_max)
 
             # Saving the lower and upper hsv values in a pickle file:
-            with open('mask_values.pkl', 'wb') as fw:
+            with open(Pickle, 'wb') as fw:
                 pickle.dump([lower_hsv, upper_hsv, erosion, dilation], fw)
+                print('Pickle written correctly')
                 fw.close()
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
@@ -686,8 +702,9 @@ class DroneX:
 
         # Else, use the lower and upper hardcoded parameters
         else:
-            with open('mask_values.pkl', 'rb') as f:
+            with open(Pickle, 'rb') as f:
                 color_lower, color_upper, erosion_iter, dilation_iter = pickle.load(f)
+                print('Pickle read correctly')
                 f.close()
 
         # Blur frame, and convert it to the HSV color space
@@ -812,7 +829,7 @@ class Ui_MainWindow(object):
         self.logo = QtWidgets.QLabel(self.centralwidget)
         self.logo.setGeometry(QtCore.QRect(280, -10, 261, 101))
         self.logo.setText("")
-        self.logo.setPixmap(QtGui.QPixmap("Resources/Super logo.png"))
+        self.logo.setPixmap(QtGui.QPixmap(Logo))
         self.logo.setScaledContents(True)
         self.logo.setObjectName("logo")
         self.autonomous_button = QtWidgets.QPushButton(self.centralwidget)
@@ -920,12 +937,11 @@ class Ui_MainWindow(object):
             else:
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
-                    self.prueba_popup()
                     self.desktop.run()  # Run program
                 except UnboundLocalError:
                     cv2.destroyAllWindows()
                     self.desktop.drone.drone_continuous_cycle = False
-                    self.error_popup()
+                    # self.error_popup()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
@@ -957,7 +973,7 @@ class Ui_MainWindow(object):
                 except UnboundLocalError:
                     cv2.destroyAllWindows()
                     self.desktop.drone.drone_continuous_cycle = False
-                    self.error_popup()
+                    # self.error_popup()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
