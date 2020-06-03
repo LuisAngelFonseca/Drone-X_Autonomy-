@@ -229,6 +229,8 @@ class DroneX:
         self.frames_to_capture = 3
         # Create a list to save a frame at different distances
         self.frame_capture_list = get_frames_while_flying(self.max_radius, self.min_radius, self.frames_to_capture)
+        # Bool to show number of tomatoes
+        self.show_tomatoes = False
         # Number of tomatoes found
         self.tomatoes = 0
 
@@ -562,8 +564,10 @@ class DroneX:
         # if (frame_capture_list[0] + 5) > r > (frame_capture_list[0] - 5):
         #     del frame_capture_list[0]
         # if 35 < r < 45:
-        self.tomatoes = count_tomatoes(frame_original, 0)[0]
-        # frame_user = count_tomatoes(frame_original, frame_user)[1]
+        if self.show_tomatoes:
+            self.tomatoes = count_tomatoes(frame_original, 0)[0]
+            str_tomatoes = 'Num of Tomatoes: ' + str(self.tomatoes)
+            frame_user = self.display_text(frame_user, str_tomatoes, (600, 700), (0, 0, 255))
         # print(tomatoes)
 
         # --------------------------- SHOW VIDEO SECTION -----------------------------
@@ -799,47 +803,56 @@ class Desktop:
 
 
 class Ui_MainWindow(object):
-    EXIT_CODE_REBOOT = -123
     def setupUi(self, MainWindow):
-        MainWindow.setObjectName("Drone-X Dashboard")
+        MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
         MainWindow.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.logo = QtWidgets.QLabel(self.centralwidget)
-        self.logo.setGeometry(QtCore.QRect(270, 20, 261, 101))
+        self.logo.setGeometry(QtCore.QRect(280, -10, 261, 101))
         self.logo.setText("")
         self.logo.setPixmap(QtGui.QPixmap("Resources/Super logo.png"))
         self.logo.setScaledContents(True)
         self.logo.setObjectName("logo")
         self.autonomous_button = QtWidgets.QPushButton(self.centralwidget)
-        self.autonomous_button.setGeometry(QtCore.QRect(310, 200, 191, 71))
+        self.autonomous_button.setGeometry(QtCore.QRect(310, 230, 191, 71))
         self.autonomous_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                              "color: rgb(255, 255, 255);\n"
                                              "font: 12pt \"Impact\";")
         self.autonomous_button.setObjectName("autonomous_button")
         self.calib_button = QtWidgets.QPushButton(self.centralwidget)
-        self.calib_button.setGeometry(QtCore.QRect(310, 330, 191, 71))
+        self.calib_button.setGeometry(QtCore.QRect(310, 360, 191, 71))
         self.calib_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                         "color: rgb(255, 255, 255);\n"
                                         "font: 12pt \"Impact\";")
         self.calib_button.setObjectName("calib_button")
         self.exit_button = QtWidgets.QPushButton(self.centralwidget)
-        self.exit_button.setGeometry(QtCore.QRect(310, 460, 191, 71))
+        self.exit_button.setGeometry(QtCore.QRect(310, 490, 191, 71))
         self.exit_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                        "color: rgb(255, 255, 255);\n"
                                        "font: 12pt \"Impact\";")
         self.exit_button.setObjectName("exit_button")
         self.about_button = QtWidgets.QPushButton(self.centralwidget)
-        self.about_button.setGeometry(QtCore.QRect(670, 500, 111, 31))
+        self.about_button.setGeometry(QtCore.QRect(670, 530, 111, 31))
         self.about_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                         "color: rgb(255, 255, 255);\n"
                                         "font: 8pt \"Impact\";")
         self.about_button.setObjectName("about_button")
-        self.radioButton = QtWidgets.QRadioButton(self.centralwidget)
-        self.radioButton.setGeometry(QtCore.QRect(310, 120, 211, 71))
-        self.radioButton.setStyleSheet("font: 10pt \"Impact\";")
-        self.radioButton.setObjectName("radioButton")
+        self.checkBox = QtWidgets.QCheckBox(self.centralwidget)
+        self.checkBox.setGeometry(QtCore.QRect(310, 120, 211, 21))
+        self.checkBox.setStyleSheet("font: 10pt \"Impact\";")
+        self.checkBox.setObjectName("checkBox")
+        self.checkBox_2 = QtWidgets.QCheckBox(self.centralwidget)
+        self.checkBox_2.setGeometry(QtCore.QRect(310, 160, 271, 21))
+        self.checkBox_2.setStyleSheet("font: 10pt \"Impact\";")
+        self.checkBox_2.setObjectName("checkBox_2")
+        self.controls_button = QtWidgets.QPushButton(self.centralwidget)
+        self.controls_button.setGeometry(QtCore.QRect(670, 490, 111, 31))
+        self.controls_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
+                                           "color: rgb(255, 255, 255);\n"
+                                           "font: 8pt \"Impact\";")
+        self.controls_button.setObjectName("controls_button")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 25))
@@ -853,10 +866,12 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         self.desktop = Desktop()
-        self.radioButton.toggled.connect(self.toggle_session)
+        self.checkBox.toggled.connect(self.toggle_session)
+        self.checkBox_2.toggled.connect(self.toggle_tomatoes)
         self.calib_button.clicked.connect(self.debug_mode)
         self.autonomous_button.clicked.connect(self.autonomous_mode)
         self.exit_button.clicked.connect(self.close_gui)
+        self.controls_button.clicked.connect(self.controls_popup)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -871,14 +886,21 @@ class Ui_MainWindow(object):
         self.exit_button.setText(_translate("MainWindow", "Salir"))
         self.about_button.setStatusTip(_translate("MainWindow", "Documentación del programa"))
         self.about_button.setText(_translate("MainWindow", "Mas Info"))
-        self.radioButton.setText(_translate("MainWindow", "Guardar video de sesión"))
+        self.checkBox.setText(_translate("MainWindow", "Guardar video de sesión"))
+        self.checkBox_2.setText(_translate("MainWindow", "Mostrar cuenta de jitomates BETA*"))
+        self.controls_button.setStatusTip(_translate("MainWindow", "Controles manuales del dron"))
+        self.controls_button.setText(_translate("MainWindow", "Controles"))
 
     def toggle_session(self):
         if not self.desktop.drone.drone_continuous_cycle:
-            self.desktop.drone.save_session = self.radioButton.isChecked()
-            print(self.desktop.drone.save_session)
+            self.desktop.drone.save_session = self.checkBox.isChecked()
+            print('Session: ', self.desktop.drone.save_session)
         else:
             print('Ya esta en un modo')
+
+    def toggle_tomatoes(self):
+        self.desktop.drone.show_tomatoes = self.checkBox_2.isChecked()
+        print('Tomatoes: ', self.desktop.drone.show_tomatoes)
 
     def debug_mode(self):
         # Check to see if its not already running a mode
@@ -898,6 +920,7 @@ class Ui_MainWindow(object):
             else:
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
+                    self.prueba_popup()
                     self.desktop.run()  # Run program
                 except UnboundLocalError:
                     cv2.destroyAllWindows()
@@ -961,6 +984,27 @@ class Ui_MainWindow(object):
         msg.setInformativeText('Favor de ser paciente')
         x = msg.exec_()
 
+    def controls_popup(self):
+        msg = QMessageBox()
+        msg.setWindowTitle('Controles manuales del dron')
+        msg.setText('Para entrar en modo manual, presionar la tecla "Espacio"')
+        msg.setIcon(QMessageBox.Information)
+        msg.setInformativeText('Presione en "Show Details" para mostrar controles manuales del dron')
+        msg.setDetailedText('ESC - Terminar programa\n'
+                            'Espacio - Activar/Desactivar modo manual\n'
+                            'T - Despega\n'
+                            'L - Aterriza\n'
+                            'Q - Sube\n'
+                            'E - Baja\n'
+                            'W - Adelante\n'
+                            'S - Atras\n'
+                            'A - Izquierda\n'
+                            'D - Derecha\n'
+                            'Z - Gira contrario a manecillas del reloj\n'
+                            'C - Gira sentido a manecillas del reloj\n')
+
+        x = msg.exec_()
+
     def error_popup(self):
         msg = QMessageBox()
         msg.setWindowTitle('Error')
@@ -980,10 +1024,7 @@ class Ui_MainWindow(object):
 
 
 def main():
-    # drone = Desktop()
-    #
-    # # Run Drone-X
-    # drone.run()
+
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
