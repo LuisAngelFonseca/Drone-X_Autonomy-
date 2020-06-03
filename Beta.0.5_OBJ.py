@@ -274,6 +274,8 @@ class DroneX:
 
     def initializer(self):
 
+        self.drone_continuous_cycle = True
+
         if not self.tello.connect():
             print("Tello not connected")
             return
@@ -290,8 +292,6 @@ class DroneX:
         if not self.tello.streamon():
             print("Could not start video stream")
             return
-
-        self.drone_continuous_cycle = True
 
         # --------------------------- VARIABLE DECLARATION SECTION -----------------------------
 
@@ -385,22 +385,6 @@ class DroneX:
 
         # Update frame
         if self.frame_read.grabbed:
-            frame_original = self.frame_read.frame
-            frame = frame_original.copy()
-        # In case no frame was grabbed, create dummy frame
-        else:
-            # In case streaming is on. This happens when we quit this program without the escape key.
-            if self.tello.background_frame_read is not None:
-                self.tello.background_frame_read.stop()
-            if self.tello.cap is not None:
-                self.tello.cap.release()
-            if not self.tello.streamoff():
-                print("Could not stop video stream")
-                return
-            if not self.tello.streamon():
-                print("Could not start video stream")
-                return
-            self.frame_read = self.tello.get_frame_read()
             frame_original = self.frame_read.frame
             frame = frame_original.copy()
 
@@ -805,7 +789,6 @@ class Desktop:
         cv2.destroyAllWindows()
 
         # Call it always before finishing. I deallocate resources.
-        # self.drone.tello.end()
         if self.drone.tello.is_flying:
             self.drone.tello.land()
         if self.drone.tello.stream_on:
@@ -816,6 +799,7 @@ class Desktop:
 
 
 class Ui_MainWindow(object):
+    EXIT_CODE_REBOOT = -123
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("Drone-X Dashboard")
         MainWindow.resize(800, 600)
@@ -900,19 +884,13 @@ class Ui_MainWindow(object):
         # Check to see if its not already running a mode
         if not self.desktop.drone.drone_continuous_cycle:
             self.desktop.drone.debug = True  # Set Debug flag to true
-            connection_error = False  # Check for connection errors
             try:
                 self.desktop.drone.tello.retry_count = 1  # Set retry command count to one for testing connection
                 self.connecting_popup()  # Show "Tello is connecting" popup
                 self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
-            except UnicodeDecodeError:
-                pass
             except Exception as e:
                 connection_error = True
                 print('Connecting exception: ', e)
-
-            # True if Tello is turned off when trying to run the program
-            if connection_error:
                 print("Tello not connected")
                 self.not_connected_popup()
 
@@ -921,8 +899,10 @@ class Ui_MainWindow(object):
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
                     self.desktop.run()  # Run program
-                except UnicodeDecodeError:
-                    pass
+                except UnboundLocalError:
+                    cv2.destroyAllWindows()
+                    self.desktop.drone.drone_continuous_cycle = False
+                    self.error_popup()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
@@ -936,19 +916,13 @@ class Ui_MainWindow(object):
         # Check to see if its not already running a mode
         if not self.desktop.drone.drone_continuous_cycle:
             self.desktop.drone.debug = False  # Set Debug flag to true
-            connection_error = False  # Check for connection errors
             try:
                 self.desktop.drone.tello.retry_count = 1  # Set retry command count to one for testing connection
                 self.connecting_popup()  # Show "Tello is connecting" popup
                 self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
-            except UnicodeDecodeError:
-                pass
             except Exception as e:
                 connection_error = True
                 print('Connecting exception: ', e)
-
-            # True if Tello is turned off when trying to run the program
-            if connection_error:
                 print("Tello not connected")
                 self.not_connected_popup()
 
@@ -957,8 +931,10 @@ class Ui_MainWindow(object):
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
                     self.desktop.run()  # Run program
-                except UnicodeDecodeError:
-                    pass
+                except UnboundLocalError:
+                    cv2.destroyAllWindows()
+                    self.desktop.drone.drone_continuous_cycle = False
+                    self.error_popup()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
@@ -985,12 +961,22 @@ class Ui_MainWindow(object):
         msg.setInformativeText('Favor de ser paciente')
         x = msg.exec_()
 
+    def error_popup(self):
+        msg = QMessageBox()
+        msg.setWindowTitle('Error')
+        msg.setText('Hubo un error en la aplicación')
+        msg.setIcon(QMessageBox.Critical)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setInformativeText('Favor de reiniciar la aplicación')
+        msg.buttonClicked.connect(self.close_gui)
+        x = msg.exec_()
+
     def close_gui(self):
         if self.desktop.drone.tello.background_frame_read is not None:
             self.desktop.drone.tello.background_frame_read.stop()
         if self.desktop.drone.tello.cap is not None:
             self.desktop.drone.tello.cap.release()
-        self.close()
+        self.close_gui()
 
 
 def main():
@@ -998,7 +984,6 @@ def main():
     #
     # # Run Drone-X
     # drone.run()
-
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
