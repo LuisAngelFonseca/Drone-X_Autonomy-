@@ -989,7 +989,7 @@ class Ui_MainWindow(object):
         msg.setText('Tello no conectado a Wifi')
         msg.setIcon(QMessageBox.Warning)
         msg.setStandardButtons(QMessageBox.Ok)
-        msg.setInformativeText('Favor de conectarse al Tello, y volver a intentar')
+        msg.setInformativeText('Favor de conectarse al Tello y volver a intentar')
         x = msg.exec_()
 
     def connecting_popup(self):
@@ -1002,22 +1002,22 @@ class Ui_MainWindow(object):
 
     def controls_popup(self):
         msg = QMessageBox()
-        msg.setWindowTitle('Controles manuales del dron')
-        msg.setText('Para entrar en modo manual, presionar la tecla "Espacio"')
+        msg.setWindowTitle('Controles manuales')
+        msg.setText('Para entrar en modo manual, presionar la tecla "Espacio" durante modo Autónomo')
         msg.setIcon(QMessageBox.Information)
-        msg.setInformativeText('Presione en "Show Details" para mostrar controles manuales del dron')
-        msg.setDetailedText('ESC - Terminar programa\n'
-                            'Espacio - Activar/Desactivar modo manual\n'
-                            'T - Despega\n'
-                            'L - Aterriza\n'
-                            'Q - Sube\n'
-                            'E - Baja\n'
-                            'W - Adelante\n'
-                            'S - Atras\n'
-                            'A - Izquierda\n'
-                            'D - Derecha\n'
-                            'Z - Gira contrario a manecillas del reloj\n'
-                            'C - Gira sentido a manecillas del reloj\n')
+        msg.setInformativeText('\nControles manuales para el dron:\n\n'
+                               'ESC - Terminar programa\n'
+                               'Espacio - Activar/Desactivar modo manual\n'
+                               'T - Despega\n'
+                               'L - Aterriza\n'
+                               'Q - Sube\n'
+                               'E - Baja\n'
+                               'W - Adelante\n'
+                               'S - Atras\n'
+                               'A - Izquierda\n'
+                               'D - Derecha\n'
+                               'Z - Gira contrario a manecillas del reloj\n'
+                               'C - Gira sentido a manecillas del reloj\n')
 
         x = msg.exec_()
 
