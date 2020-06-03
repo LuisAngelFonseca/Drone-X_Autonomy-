@@ -251,6 +251,8 @@ class DroneX:
         # Create variables that counts time
         self.actual_time = time.time()
         self.elapsed_time = self.actual_time
+        # Create variables that count time to send connection command
+        self.elapsed_connected_time = self.actual_time
         # Create variables that count time to blink text
         self.elapsed_text_blink = self.actual_time
         # Create variables that count time to blink battery when low
@@ -389,6 +391,9 @@ class DroneX:
     def run(self):
 
         # -<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-< CONTINUOUS DRONE CYCLE ->->->->->->->->->->->->->->->->->->->->->
+
+        # --------------------------- CHECK DRONE CONNECTION SECTION -----------------------------
+        self.check_drone_connection()
 
         # --------------------------- SEND DRONE VELOCITY SECTION -----------------------------
         # Function that updates drone velocities in the override mode and autonomous mode
@@ -790,6 +795,13 @@ class DroneX:
 
         # Send the velocities to drone
         return self.yaw_velocity, self.up_down_velocity, self.for_back_velocity
+
+    def check_drone_connection(self):
+        if self.actual_time - self.elapsed_connected_time > 2:
+            self.elapsed_connected_time = self.actual_time
+            self.tello.retry_count = 2
+            self.tello.send_control_command('command', timeout=3)  # Send command to test connection
+            self.tello.retry_count = 3
 
 
 class Desktop:
