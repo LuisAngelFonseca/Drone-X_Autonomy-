@@ -318,7 +318,6 @@ class DroneX:
             # Checks if string battery is not empty
             if not (self.battery == '' or self.battery == 'ok' or self.battery == 'OK'):
                 self.battery = int(self.battery)
-                print('Se convirtio valor de bateria a int')
             else:
                 print('Bateria entrego "" o "ok"')
         except:
@@ -347,7 +346,6 @@ class DroneX:
 
             with open(Pickle, 'rb') as f:
                 color_lower, color_upper, erosion, dilation = pickle.load(f)
-                print('Pickle read correctly')
                 f.close()
 
             hue_lower, sat_lower, val_lower = color_lower
@@ -404,6 +402,16 @@ class DroneX:
         if self.frame_read.grabbed:
             frame_original = self.frame_read.frame
             frame = frame_original.copy()
+        else:
+            print('FRAME NOT GRABBED')
+            self.tello.end()
+            cv2.destroyAllWindows()
+            self.tello.clientSocket.close()
+            self.tello.stateSocket.close()
+            self.tello = Tello()
+            self.initializer()
+            frame_original = self.frame_read.frame
+            frame = frame_original.copy()
 
         # --------------------------- DEBUG CALIBRATION SECTION -----------------------------
         # Update the trackbars HSV mask and apply the erosion and dilation
@@ -429,7 +437,6 @@ class DroneX:
             # Saving the lower and upper hsv values in a pickle file:
             with open(Pickle, 'wb') as fw:
                 pickle.dump([lower_hsv, upper_hsv, erosion, dilation], fw)
-                print('Pickle written correctly')
                 fw.close()
 
             mask = cv2.inRange(frame_HSV, lower_hsv, upper_hsv)
@@ -617,7 +624,6 @@ class DroneX:
                         # Checks if string battery is not empty
                         if not (self.battery == '' or self.battery == 'ok' or self.battery == 'OK'):
                             self.battery = int(self.battery)
-                            print('Se convirtio valor de bateria a int')
                         else:
                             print('Bateria entrego "" o "ok"')
                     except:
@@ -634,7 +640,6 @@ class DroneX:
                         # Checks if string battery is not empty
                         if not (self.battery == '' or self.battery == 'ok' or self.battery == 'OK'):
                             self.battery = int(self.battery)
-                            print('Se convirtio valor de bateria a int')
                         else:
                             print('Bateria entrego "" o "ok"')
                     except:
@@ -704,7 +709,6 @@ class DroneX:
         else:
             with open(Pickle, 'rb') as f:
                 color_lower, color_upper, erosion_iter, dilation_iter = pickle.load(f)
-                print('Pickle read correctly')
                 f.close()
 
         # Blur frame, and convert it to the HSV color space
@@ -928,7 +932,6 @@ class Ui_MainWindow(object):
                 self.connecting_popup()  # Show "Tello is connecting" popup
                 self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
             except Exception as e:
-                connection_error = True
                 print('Connecting exception: ', e)
                 print("Tello not connected")
                 self.not_connected_popup()
@@ -938,15 +941,12 @@ class Ui_MainWindow(object):
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
                     self.desktop.run()  # Run program
-                except UnboundLocalError:
-                    cv2.destroyAllWindows()
-                    self.desktop.drone.drone_continuous_cycle = False
-                    # self.error_popup()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
                     cv2.destroyAllWindows()
                     self.desktop.drone.drone_continuous_cycle = False
+                    self.error_popup()
 
         else:
             print('Ya esta en un modo')
@@ -960,7 +960,6 @@ class Ui_MainWindow(object):
                 self.connecting_popup()  # Show "Tello is connecting" popup
                 self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
             except Exception as e:
-                connection_error = True
                 print('Connecting exception: ', e)
                 print("Tello not connected")
                 self.not_connected_popup()
@@ -970,15 +969,12 @@ class Ui_MainWindow(object):
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
                     self.desktop.run()  # Run program
-                except UnboundLocalError:
-                    cv2.destroyAllWindows()
-                    self.desktop.drone.drone_continuous_cycle = False
-                    # self.error_popup()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
                     cv2.destroyAllWindows()
                     self.desktop.drone.drone_continuous_cycle = False
+                    self.error_popup()
 
         else:
             print('Ya esta en un modo')
@@ -1050,4 +1046,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        print('Error in Main: ', e)
