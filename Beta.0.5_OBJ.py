@@ -1,15 +1,21 @@
 from djitellopy import Tello
 import cv2
 import numpy as np
-import time
+from time import time, sleep
 import imutils
-import math
+from math import pi
 import os
-import datetime
+from datetime import datetime
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import QCursor
+from PyQt5.Qt import QUrl, QDesktopServices
 import sys
 import pickle
+import ctypes
+
+myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 
 def resource_path(relative_path):
@@ -229,7 +235,7 @@ class DroneX(object):
 
         # Values are given in pixels for following variables
         # Grid size
-        self.grid_size = 60
+        self.grid_size = 70
         # Radius of the object in which the drone will stop
         self.radius_stop = 60
         # Tolerance range in which the drone will stop
@@ -249,7 +255,7 @@ class DroneX(object):
         self.tomatoes = 0
 
         # Create variables that counts time
-        self.actual_time = time.time()
+        self.actual_time = time()
         self.elapsed_time = self.actual_time
         # Create variables that count time to send connection command
         self.elapsed_connected_time = self.actual_time
@@ -376,7 +382,7 @@ class DroneX(object):
             if not os.path.isdir(ddir):
                 os.mkdir(ddir)
             # We create a new folder path to save the actual video session with day and time
-            ddir = "Sessions/Session {}".format(str(datetime.datetime.now()).replace(':', '-').replace('.', '_'))
+            ddir = "Sessions/Session {}".format(str(datetime.now()).replace(':', '-').replace('.', '_'))
             os.mkdir(ddir)
             # Get the frame size
             width = 960
@@ -494,7 +500,7 @@ class DroneX(object):
             if self.tello.is_flying:
                 for i in range(50):
                     self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
-                    time.sleep(1 / self.FPS)
+                    sleep(1 / self.FPS)
             self.drone_continuous_cycle = False
 
         if self.is_taking_off:
@@ -511,7 +517,7 @@ class DroneX(object):
         if self.is_landing:
             for i in range(50):
                 self.tello.send_rc_control(0, 0, 0, 0)  # Stop the drone if it has momentum
-                time.sleep(1 / self.FPS)
+                sleep(1 / self.FPS)
             self.tello.land()
             self.is_landing = False
 
@@ -604,9 +610,9 @@ class DroneX(object):
 
         # --------------------------- MISCELLANEOUS SECTION -----------------------------
         # Save actual time
-        self.actual_time = time.time()
+        self.actual_time = time()
         # Delay to showcase desired fps in video
-        time.sleep(1 / self.FPS)
+        sleep(1 / self.FPS)
 
     def callback(self, x):
         pass
@@ -747,7 +753,7 @@ class DroneX(object):
                 perimeter = cv2.arcLength(contour, True)
                 if perimeter > 0:
                     area = cv2.contourArea(contour)
-                    circularity = 4 * math.pi * (area / (perimeter * perimeter))  # Formula for circularity
+                    circularity = 4 * pi * (area / (perimeter * perimeter))  # Formula for circularity
                     if 0.85 < circularity < 1.05:
                         contours_circles.append(contour)
 
@@ -787,6 +793,7 @@ class DroneX(object):
             # If the drone is centered with the target and at the distance send velocities to 0
             if distance_radius + tolerance > radius > distance_radius - tolerance:
                 self.for_back_velocity = 0
+                # print('Esta en radio final')
         # Drone move to get the target centered
         else:
             self.yaw_velocity = int((x - 480) * .125)
@@ -853,38 +860,45 @@ class Ui_MainWindow(object):
         self.autonomous_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                              "color: rgb(255, 255, 255);\n"
                                              "font: 12pt \"Impact\";")
+        self.autonomous_button.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.autonomous_button.setObjectName("autonomous_button")
         self.calib_button = QtWidgets.QPushButton(self.centralwidget)
         self.calib_button.setGeometry(QtCore.QRect(310, 360, 191, 71))
         self.calib_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                         "color: rgb(255, 255, 255);\n"
                                         "font: 12pt \"Impact\";")
+        self.calib_button.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.calib_button.setObjectName("calib_button")
         self.exit_button = QtWidgets.QPushButton(self.centralwidget)
         self.exit_button.setGeometry(QtCore.QRect(310, 490, 191, 71))
         self.exit_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                        "color: rgb(255, 255, 255);\n"
                                        "font: 12pt \"Impact\";")
+        self.exit_button.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.exit_button.setObjectName("exit_button")
         self.about_button = QtWidgets.QPushButton(self.centralwidget)
         self.about_button.setGeometry(QtCore.QRect(670, 530, 111, 31))
         self.about_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                         "color: rgb(255, 255, 255);\n"
                                         "font: 8pt \"Impact\";")
+        self.about_button.setCursor(QCursor(QtCore.Qt.WhatsThisCursor))
         self.about_button.setObjectName("about_button")
         self.checkBox = QtWidgets.QCheckBox(self.centralwidget)
         self.checkBox.setGeometry(QtCore.QRect(310, 120, 211, 21))
         self.checkBox.setStyleSheet("font: 10pt \"Impact\";")
+        self.checkBox.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.checkBox.setObjectName("checkBox")
         self.checkBox_2 = QtWidgets.QCheckBox(self.centralwidget)
         self.checkBox_2.setGeometry(QtCore.QRect(310, 160, 271, 21))
         self.checkBox_2.setStyleSheet("font: 10pt \"Impact\";")
+        self.checkBox_2.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.checkBox_2.setObjectName("checkBox_2")
         self.controls_button = QtWidgets.QPushButton(self.centralwidget)
         self.controls_button.setGeometry(QtCore.QRect(670, 490, 111, 31))
         self.controls_button.setStyleSheet("background-color: rgb(83, 83, 83);\n"
                                            "color: rgb(255, 255, 255);\n"
                                            "font: 8pt \"Impact\";")
+        self.controls_button.setCursor(QCursor(QtCore.Qt.WhatsThisCursor))
         self.controls_button.setObjectName("controls_button")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -905,6 +919,7 @@ class Ui_MainWindow(object):
         self.autonomous_button.clicked.connect(self.autonomous_mode)
         self.exit_button.clicked.connect(self.close_gui)
         self.controls_button.clicked.connect(self.controls_popup)
+        self.about_button.clicked.connect(self.about_popup)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -942,17 +957,22 @@ class Ui_MainWindow(object):
             try:
                 self.desktop.drone.tello.retry_count = 1  # Set retry command count to one for testing connection
                 self.connecting_popup()  # Show "Tello is connecting" popup
+                QtWidgets.QApplication.setOverrideCursor(QCursor(QtCore.Qt.BusyCursor))
                 self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
             except Exception as e:
                 print('Connecting exception: ', e)
                 print("Tello not connected")
+                QtWidgets.QApplication.restoreOverrideCursor()
                 self.not_connected_popup()
 
             # Tello is connected
             else:
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
+                    QtWidgets.QApplication.restoreOverrideCursor()
+                    self.cursor_forbidden()
                     self.desktop.run()  # Run program
+                    self.cursor_reset()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
@@ -970,17 +990,22 @@ class Ui_MainWindow(object):
             try:
                 self.desktop.drone.tello.retry_count = 1  # Set retry command count to one for testing connection
                 self.connecting_popup()  # Show "Tello is connecting" popup
+                QtWidgets.QApplication.setOverrideCursor(QCursor(QtCore.Qt.BusyCursor))
                 self.desktop.drone.tello.send_control_command('command', timeout=3)  # Send command to test connection
             except Exception as e:
                 print('Connecting exception: ', e)
                 print("Tello not connected")
+                QtWidgets.QApplication.restoreOverrideCursor()
                 self.not_connected_popup()
 
             # Tello is connected
             else:
                 self.desktop.drone.tello.retry_count = 3  # Reset retry command count to original value
                 try:
+                    QtWidgets.QApplication.restoreOverrideCursor()
+                    self.cursor_forbidden()
                     self.desktop.run()  # Run program
+                    self.cursor_reset()
                 except Exception as e:
                     print('Run excepction: ', e)
                     print('Error while running run')
@@ -1029,6 +1054,28 @@ class Ui_MainWindow(object):
 
         x = msg.exec_()
 
+    def about_popup(self):
+        msg = QMessageBox()
+        msg.setWindowTitle('Documentación')
+        msg.setText('Mas Información')
+        msg.setIcon(QMessageBox.Question)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.addButton('Tutoriales en Youtube', QMessageBox.YesRole)
+        msg.addButton('Pagina Web', QMessageBox.YesRole)
+
+        msg.buttonClicked.connect(self.redirect)
+
+        x = msg.exec_()
+
+    def redirect(self, i):
+        if i.text() == 'Tutoriales en Youtube':
+            url = QUrl("https://www.youtube.com/playlist?list=PLs65zkPMgyL0cje_YMB30NM6W9PRN4k09")
+            QDesktopServices.openUrl(url)
+
+        elif i.text() == 'Pagina Web':
+            pass
+
     def error_popup(self):
         msg = QMessageBox()
         msg.setWindowTitle('Error')
@@ -1039,12 +1086,23 @@ class Ui_MainWindow(object):
         msg.buttonClicked.connect(self.close_gui)
         x = msg.exec_()
 
+    def cursor_forbidden(self):
+        self.checkBox.setCursor(QCursor(QtCore.Qt.ForbiddenCursor))
+        self.calib_button.setCursor(QCursor(QtCore.Qt.ForbiddenCursor))
+        self.autonomous_button.setCursor(QCursor(QtCore.Qt.ForbiddenCursor))
+
+    def cursor_reset(self):
+        self.checkBox.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
+        self.calib_button.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
+        self.autonomous_button.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
+
     def close_gui(self):
+        QtWidgets.QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
         if self.desktop.drone.tello.background_frame_read is not None:
             self.desktop.drone.tello.background_frame_read.stop()
         if self.desktop.drone.tello.cap is not None:
             self.desktop.drone.tello.cap.release()
-        self.close_gui()
+        sys.exit()
 
 
 def main():
