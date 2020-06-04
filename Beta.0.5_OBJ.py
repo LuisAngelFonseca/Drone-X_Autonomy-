@@ -12,10 +12,6 @@ from PyQt5.QtGui import QCursor
 from PyQt5.Qt import QUrl, QDesktopServices
 import sys
 import pickle
-import ctypes
-
-myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 
 def resource_path(relative_path):
