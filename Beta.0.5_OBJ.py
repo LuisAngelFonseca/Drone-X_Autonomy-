@@ -1070,7 +1070,8 @@ class Ui_MainWindow(object):
             QDesktopServices.openUrl(url)
 
         elif i.text() == 'Pagina Web':
-            pass
+            url = QUrl("http://dronex.pythonanywhere.com/home")
+            QDesktopServices.openUrl(url)
 
     def error_popup(self):
         msg = QMessageBox()
